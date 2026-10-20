@@ -65,7 +65,7 @@ class GreenhouseClient : ClientModInitializer {
             }
                 .then(literal("settings").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(GreenhouseSettingsScreen()) }; 1 })
                 .then(literal("layouts").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(GreenhouseScreen()) }; 1 })
-                .then(literal("help").executes { say("/ge, /greenessentials, /greenhouse share all subcommands. /gelayouts opens layouts. /ge profile <name>, capture <name>, import <name> (clipboard), importfile <file>, use/rotate/export/delete <name>, unload, target <mutation|none|auto>, toggle, overlay, price <id> <coins>, prices, hud <x> <y>, detect, items, stats, session, alltime, reset confirm") })
+                .then(literal("help").executes { say("/ge, /greenessentials, /greenhouse share all subcommands. /gelayouts opens layouts. /ge profile <name>, capture <name>, import <name> (clipboard), importfile <file>, use/rotate/export/delete <name>, unload, target <mutation|none|auto>, toggle, overlay, price <id> <coins>, prices, hud <x> <y>, debug, version, detect, items, stats, session, alltime, reset confirm") })
                 .then(literal("profile").then(argument("name", StringArgumentType.word()).executes { ctx -> action {
                     Tracker.setProfile(StringArgumentType.getString(ctx, "name")); say("Profile: ${Tracker.profileName}")
                 } }))
@@ -92,6 +92,8 @@ class GreenhouseClient : ClientModInitializer {
                 .then(literal("hud").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(HudEditorScreen()) }; 1 }.then(argument("x", IntegerArgumentType.integer(0)).then(argument("y", IntegerArgumentType.integer(0)).executes { ctx ->
                     Storage.settings.hudX = IntegerArgumentType.getInteger(ctx,"x"); Storage.settings.hudY = IntegerArgumentType.getInteger(ctx,"y"); Storage.save(); 1
                 })))
+                .then(literal("debug").executes { action { TrackerDebug.export() } })
+                .then(literal("version").executes { say(TrackerDebug.version()) })
                 .then(literal("detect").executes { say(PlotDetection.status()) })
                 .then(literal("items").executes {
                     Tracker.flush()
@@ -148,7 +150,8 @@ class GreenhouseClient : ClientModInitializer {
 }
 
 internal object Tracker {
-    private val ledger = HarvestLedger(HarvestSignals::allows)
+    private val journal = AttributionJournal()
+    private val attribution = HarvestAttribution(record = journal::record)
     private val sessions = TrackerSessions()
     val mode get() = Storage.settings.trackerMode
     fun view(): TrackerTotals = if (mode == TrackerMode.SESSION) sessions.view(Storage.scope)
@@ -173,8 +176,13 @@ internal object Tracker {
         private set
     private var lastPest = 0L
     private val seenDeaths = mutableSetOf<Int>()
-    fun returnedMutation(id: String) { ledger.ignoreReturn(id) }
-    fun resetRuntime() { HarvestSignals.reset(); ledger.reset(); lastEligible = false; seenDeaths.clear(); Layouts.clear() }
+    fun returnedMutation(id: String) = attribution.returned(id)
+    fun confirmedHarvest(id: String) = attribution.harvested(id)
+    fun activeHarvest(): Boolean = attribution.active()
+    fun clearHarvestEvidence(reason: String) = attribution.clearEvidence(reason)
+    fun trace(event: String, item: String? = null, reason: String? = null) = attribution.note(event, item, reason)
+    fun diagnostics(): Pair<List<AttributionEvent>, Long> = journal.snapshot() to journal.droppedEvents
+    fun resetRuntime(reason: String = "user_or_context_reset") { HarvestSignals.reset(); attribution.reset(reason); lastEligible = false; seenDeaths.clear(); Layouts.clear() }
     fun setProfile(name: String) {
         require(name.matches(Regex("[A-Za-z0-9_-]{1,32}"))) { "Use a short profile name without spaces." }
         flush(); profileName = name.lowercase(); updateScope(); resetRuntime()
@@ -182,14 +190,14 @@ internal object Tracker {
     private fun updateScope() {
         val client = Minecraft.getInstance(); val player = client.player
         val scope = if (player != null && profileName != null) "${client.currentServer?.ip ?: "singleplayer"}/${player.uuid}/${profileName}" else null
-        if (scope != Storage.scope) { flush(); Storage.scope = scope; resetRuntime() }
+        if (scope != Storage.scope) { flush(); Storage.scope = scope; resetRuntime("profile_scope_changed") }
     }
     fun tick() {
         val client = Minecraft.getInstance(); val now = System.currentTimeMillis()
         val elapsed = (now-lastTick).coerceIn(0,1000); lastTick = now
         if (client.level !== lastLevel) {
             flush(); Storage.save(); lastLevel = client.level; profileName = null
-            Storage.scope = null; resetRuntime()
+            Storage.scope = null; resetRuntime("world_changed")
         }
         if (client.player == null || client.level == null) return
         if (++ticks % 10 == 0) {
@@ -210,7 +218,7 @@ internal object Tracker {
         val inventory = client.player!!.inventory.nonEquipmentItems.groupBy { Prices.id(it) }.mapNotNull { (id, items) ->
             id?.let { it to items.sumOf { stack -> stack.count.toLong() } }
         }.toMap()
-        ledger.snapshot(inventory, eligible && lastEligible)
+        attribution.snapshot(inventory, eligible && lastEligible)
         if (eligible) {
             val entities = client.level!!.entitiesForRendering().toList()
             entities.filterIsInstance<net.minecraft.world.entity.LivingEntity>().filter {
@@ -220,7 +228,7 @@ internal object Tracker {
                     it !== entity && it.distanceToSqr(entity) < 9 && it.customName != null
                 }.map { it.customName!!.string }
                 val id = names.firstNotNullOfOrNull(::mutationMob)
-                if (id != null && seenDeaths.add(entity.id)) ledger.mutation(id,false)
+                if (id != null && seenDeaths.add(entity.id)) attribution.mutation(id,false)
             }
         }
         lastEligible = eligible
@@ -228,7 +236,7 @@ internal object Tracker {
         if (ticks % 200 == 0) Storage.save()
     }
     fun flush() {
-        val gains = ledger.flush()
+        val gains = attribution.flush()
         val profile = Storage.profile ?: return
         gains.forEach { (id, count) -> profile.items[id] = profile.items.getOrDefault(id,0)+count }
         Storage.scope?.let { sessions.record(it,gains) }
@@ -239,7 +247,10 @@ internal object Tracker {
         Regex("(?:You are playing on profile: |Your profile was changed to: |You switched to profile )([A-Za-z]+)", RegexOption.IGNORE_CASE).find(text)?.let {
             flush(); profileName = it.groupValues[1].lowercase(); updateScope(); resetRuntime()
         }
-        if (!Storage.settings.enabled || Storage.profile == null || currentPlot() == null) return
+        if (!Storage.settings.enabled || Storage.profile == null || currentPlot() == null) {
+            if (text.startsWith("[Sacks]")) trace("sack_report_rejected", reason = "disabled_or_outside_profile_plot")
+            return
+        }
         if (Minecraft.getInstance().screen == null) {
             val patterns = listOf(
                 Regex("You caught(?: [an]+)?(?: x\\d+)? (Timestalk Clone|Zombuddy) Shards?!"),
@@ -247,14 +258,18 @@ internal object Tracker {
                 Regex("LOOT SHARE!? You received (?:an?|\\d+x?) (Timestalk Clone|Zombuddy) Shards? (?:for assisting .*|from .*)!"),
             )
             patterns.firstNotNullOfOrNull { it.find(text)?.groupValues?.get(1) }?.let {
-                mutationMob(it)?.let { id -> ledger.mutation(id,true) }
+                mutationMob(it)?.let { id -> attribution.mutation(id,true) }
             }
         }
         Regex("You received ([\\d,]+)x (.+) for killing an? .+!").find(text)?.let { match ->
             lastPest = System.currentTimeMillis()
-            Prices.idForName(match.groupValues[2])?.let { ledger.exclude(it, match.groupValues[1].replace(",", "").toLong()) }
+            Prices.idForName(match.groupValues[2])?.let { attribution.exclude(it, match.groupValues[1].replace(",", "").toLong()) }
         }
-        if (!text.startsWith("[Sacks]") || Minecraft.getInstance().screen != null || !lastEligible) return
+        if (!text.startsWith("[Sacks]")) return
+        if (Minecraft.getInstance().screen != null || !lastEligible) {
+            trace("sack_report_rejected", reason = if (Minecraft.getInstance().screen != null) "screen_open" else "context_ineligible")
+            return
+        }
         val hovers = linkedSetOf<String>()
         fun visit(component: Component) {
             val hover = component.style.hoverEvent
@@ -262,12 +277,11 @@ internal object Tracker {
             component.siblings.forEach(::visit)
         }
         visit(message)
-        if (hovers.none { it.startsWith("Added") || it.startsWith("Removed") }) return
-        SackReport.parse(hovers,Prices::idForName).forEach { (id,count) ->
-            ledger.sack(id,count,HarvestSignals::allowsSack)
+        if (hovers.none { it.startsWith("Added") || it.startsWith("Removed") }) {
+            trace("sack_report_rejected", reason = "no_detailed_hover")
+            return
         }
-        HarvestSignals.finishSackReport()
-        ledger.finishSackReport()
+        attribution.sackReport(SackReport.parse(hovers, Prices::idForName), eligible = true)
     }
     private fun mutationMob(name: String): String? = when {
         clean(name).contains("Timestalk Clone") -> "TIMESTALK"

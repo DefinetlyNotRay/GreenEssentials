@@ -1,0 +1,61 @@
+{
+  "description": "Synthetic regression sequence, not a recorded Minecraft session.",
+  "events": [
+    {
+      "at": 0,
+      "type": "inventory",
+      "items": {},
+      "eligible": true
+    },
+    {
+      "at": 100,
+      "type": "inventory",
+      "items": {
+        "WHEAT": 1000
+      },
+      "eligible": true
+    },
+    {
+      "at": 200,
+      "type": "harvest",
+      "id": "WHEAT"
+    },
+    {
+      "at": 2300,
+      "type": "inventory",
+      "items": {
+        "WHEAT": 1010
+      },
+      "eligible": true
+    },
+    {
+      "at": 15000,
+      "type": "sack",
+      "items": {
+        "WHEAT": 20,
+        "POTATO_ITEM": 999
+      },
+      "eligible": true
+    },
+    {
+      "at": 15000,
+      "type": "flush",
+      "expected": {
+        "WHEAT": 20
+      }
+    },
+    {
+      "at": 16000,
+      "type": "sack",
+      "items": {
+        "WHEAT": 500
+      },
+      "eligible": true
+    },
+    {
+      "at": 16000,
+      "type": "flush",
+      "expected": {}
+    }
+  ]
+}

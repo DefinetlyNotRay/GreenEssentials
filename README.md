@@ -6,9 +6,9 @@ Standalone client Fabric mod for Hypixel SkyBlock Greenhouse layouts and harvest
 
 Minecraft **26.1 or 26.1.2**, Java **25**, Fabric Loader **0.19.0+**, Fabric API for your Minecraft version, and Fabric Language Kotlin **1.13.13+kotlin.2.4.10 or newer** are required. Use the GreenEssentials JAR matching your Minecraft version. Put the JAR and those dependencies in your instance's `mods` folder.
 
-Build from this directory with `./gradlew build` (Windows: `.\gradlew.bat build`). The installable JAR is `build/libs/greenessentials-0.1.17-mc26.1.2.jar`; the `-sources.jar` is source code, not the mod to install. Run tests with `./gradlew test`.
+Build from this directory with `./gradlew build` (Windows: `.\gradlew.bat build`). The installable JAR is `build/libs/greenessentials-0.1.18-mc26.1.2.jar`; the `-sources.jar` is source code, not the mod to install. Run tests with `./gradlew test`.
 
-For Minecraft **26.1**, build with `./gradlew build -Pminecraft_version=26.1` (PowerShell: `.\gradlew.bat build '-Pminecraft_version=26.1'`). This produces `build/libs/greenessentials-0.1.17-mc26.1.jar` with metadata requiring 26.1. The default build targets 26.1.2.
+For Minecraft **26.1**, build with `./gradlew build -Pminecraft_version=26.1` (PowerShell: `.\gradlew.bat build '-Pminecraft_version=26.1'`). This produces `build/libs/greenessentials-0.1.18-mc26.1.jar` with metadata requiring 26.1. The default build targets 26.1.2.
 
 ## Use
 
@@ -124,3 +124,11 @@ Manual placements are recorded per profile and plot only after a new matching pl
 ## Source and rebuilding
 
 Source code and build scripts live in this repository. Corresponding bundled dependency source archives, provenance, and instructions for rebuilding with modified MoulConfig are described in [SOURCE-AND-REBUILD.md](SOURCE-AND-REBUILD.md). Do not install the nodeps or sources JAR as the mod.
+
+## Tracker diagnostics
+
+`/ge version` shows the loaded mod and Minecraft versions. `/ge debug` copies a bounded structured event log to the clipboard and saves it to `config/greenhouse/tracker-debug.json`. All full command aliases support these subcommands too.
+
+The log includes confirmed harvests, recognized or ignored targets, authorization resets, item admission/rejection reasons, and the final credited totals. An admitted candidate is not necessarily credited: inventory/sack duplicates and exclusions are applied before totals change. The diagnostic buffer is limited to 512 events and reports how many older entries were dropped. Raw chat, player UUIDs, server addresses, and profile names are not recorded. Nothing is uploaded automatically.
+
+Report the loaded version and reproduce a missed harvest, then run `/ge debug`. Include whether you opened a screen or changed plots before the sack report. Tests in `src/test/resources/replays` are synthetic regressions, not recordings from real Minecraft sessions. See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture and verification conventions.

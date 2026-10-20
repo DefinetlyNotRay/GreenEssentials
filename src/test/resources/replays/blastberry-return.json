@@ -1,0 +1,62 @@
+{
+  "description": "Synthetic regression sequence, not a recorded Minecraft session.",
+  "events": [
+    {
+      "at": 0,
+      "type": "inventory",
+      "items": {
+        "BLASTBERRY": 1
+      },
+      "eligible": true
+    },
+    {
+      "at": 100,
+      "type": "inventory",
+      "items": {},
+      "eligible": true
+    },
+    {
+      "at": 2000,
+      "type": "harvest",
+      "id": "ALL_IN_ALOE"
+    },
+    {
+      "at": 2500,
+      "type": "return",
+      "id": "BLASTBERRY"
+    },
+    {
+      "at": 2600,
+      "type": "inventory",
+      "items": {
+        "BLASTBERRY": 1,
+        "ALL_IN_ALOE": 3
+      },
+      "eligible": true
+    },
+    {
+      "at": 2700,
+      "type": "flush",
+      "expected": {
+        "ALL_IN_ALOE": 3
+      }
+    },
+    {
+      "at": 15000,
+      "type": "sack",
+      "items": {
+        "BLASTBERRY": 1,
+        "ALL_IN_ALOE": 3,
+        "COMPACTED_MOONFLOWER": 14
+      },
+      "eligible": true
+    },
+    {
+      "at": 15000,
+      "type": "flush",
+      "expected": {
+        "MOONFLOWER": 358400
+      }
+    }
+  ]
+}

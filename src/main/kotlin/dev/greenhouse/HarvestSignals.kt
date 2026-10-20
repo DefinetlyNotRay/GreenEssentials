@@ -15,25 +15,15 @@ import net.minecraft.world.level.block.Blocks
 import kotlin.math.floor
 
 internal object HarvestSignals {
-    private val gate = HarvestGate()
-    private val sackGate = HarvestGate(60_000)
     private data class Pending(val id: String,val signature: String,val position: LorenzVec,val entity: Entity?,val block: BlockPos?,val expires: Long,val cell: String,val manual: Boolean)
     private val pending = mutableMapOf<String,Pending>()
     private val placements = PlacementHistory()
     private var wasAvailable = false
     private fun available(): Boolean = Storage.settings.enabled && Storage.profile != null && currentPlot() != null && Minecraft.getInstance().screen == null
     private fun inside(position: LorenzVec): Boolean = currentPlot()?.let { GreenhouseGridScanner.isInsideGrid(it,position) && position.y in 60.0..100.0 } == true
-    fun allows(id: String) = available() && gate.allows(id,System.currentTimeMillis())
-    fun allowsSack(id: String) = available() && sackGate.allows(id,System.currentTimeMillis())
-    fun finishSackReport() = sackGate.clear()
-    fun active() = available() && gate.active(System.currentTimeMillis())
-    fun reset() { gate.clear(); sackGate.clear(); pending.clear(); placements.clear(); wasAvailable = false }
-    private fun confirm(id: String) {
-        val items = HarvestRewards.items(id)
-        val now = System.currentTimeMillis()
-        gate.confirm(items,now)
-        sackGate.confirm(items,now)
-    }
+    fun active() = available() && Tracker.activeHarvest()
+    fun reset() { pending.clear(); placements.clear(); wasAvailable = false }
+    private fun confirm(id: String) = Tracker.confirmedHarvest(id)
     fun register() {
         ClientPlayerBlockBreakEvents.AFTER.register { level, _, position, state ->
             if (level !== Minecraft.getInstance().level || !available() || !inside(LorenzVec(position.x,position.y,position.z))) return@register
@@ -106,9 +96,17 @@ internal object HarvestSignals {
         val location = LorenzVec(position.x,position.y,position.z)
         if (!inside(location)) return
         val block = location.getBlockStateAt().block
-        if (block != Blocks.PLAYER_HEAD && block != Blocks.PLAYER_WALL_HEAD) return
+        if (block != Blocks.PLAYER_HEAD && block != Blocks.PLAYER_WALL_HEAD) {
+            Tracker.trace("ignored_block_target", reason = "not_a_crop_head")
+            return
+        }
         val id = getSkullOwnerAt(location)?.let(GreenhouseMutation::fromSkullOwner)?.internalId
-            ?: GreenhouseCropScanner.skyShardsCropIdAt(location)?.let(::baseCrop) ?: return
+            ?: GreenhouseCropScanner.skyShardsCropIdAt(location)?.let(::baseCrop)
+        if (id == null) {
+            Tracker.trace("ignored_block_target", reason = "unrecognized_crop_head")
+            return
+        }
+        Tracker.trace("model_observed", id, "block")
         pending["block:$position"] = Pending(id,blockSignature(position),location,null,position.immutable(),System.currentTimeMillis()+2000,cell(location),isManual(cell(location),id))
     }
     private fun signature(entity: Entity): String = when (entity) {
@@ -127,13 +125,24 @@ internal object HarvestSignals {
             is ArmorStand -> itemHarvestId(entity.getStandHelmet()) ?: itemHarvestId(entity.getHandItem())
             is Display.ItemDisplay -> itemHarvestId(entity.itemStack)
             else -> null
-        } ?: GreenhouseMutation.fromName(entity.name.string)?.internalId ?: return
+        } ?: GreenhouseMutation.fromName(entity.name.string)?.internalId
+        if (id == null) {
+            Tracker.trace("ignored_entity_target", reason = entity.type.toString())
+            return
+        }
+        Tracker.trace("model_observed", id, "entity")
         // Require the clicked plant model to change/disappear; simply clicking it grants no credit.
         pending["entity:${entity.id}"] = Pending(id,signature(entity),entity.getLorenzVec(),entity,null,System.currentTimeMillis()+2000,cell(entity.getLorenzVec()),isManual(cell(entity.getLorenzVec()),id))
     }
     fun tick() {
         val available = available()
-        if (!available) { if (wasAvailable) reset(); return }
+        if (!available) {
+            if (wasAvailable) {
+                Tracker.clearHarvestEvidence(if (Minecraft.getInstance().screen != null) "screen_open" else "context_unavailable")
+                reset()
+            }
+            return
+        }
         wasAvailable = true
         val now = System.currentTimeMillis()
         val player = Minecraft.getInstance().player ?: return
@@ -146,7 +155,10 @@ internal object HarvestSignals {
             Storage.profile?.manualMutations?.let { placements.confirm(models,it,now) }
         }
         pending.entries.removeIf { (_,event) ->
-            if (now > event.expires || player.getLorenzVec().distanceSq(event.position) > 100) true
+            if (now > event.expires || player.getLorenzVec().distanceSq(event.position) > 100) {
+                Tracker.trace("model_unconfirmed", event.id, if (now > event.expires) "timeout" else "out_of_range")
+                true
+            }
             else {
                 val changed = event.entity?.let { it.isRemoved || signature(it) != event.signature }
                     ?: (event.block?.let(::blockSignature) != event.signature)
