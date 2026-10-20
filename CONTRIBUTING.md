@@ -17,3 +17,17 @@ Regression tests should reproduce a failure or verify a meaningful invariant. Pr
 Passing unit tests does not prove Minecraft integration works. Changes affecting callbacks, GUI rendering, model recognition, or packet ordering need an in-game check. Report exactly what was checked, the loaded mod/Minecraft versions, and any remaining uncertainty. Never describe a synthetic replay as a recording from the game.
 
 Keep credentials, player saves, runtime logs, and local caches out of commits. Debug exports must omit raw chat, player IDs, server addresses, and profile names.
+
+## Current module boundaries
+
+| Module | Responsibility |
+| --- | --- |
+| GreenhouseClient | Initialize the mod and attach Fabric callbacks. |
+| GreenhouseCommands / LayoutOverlay | Command actions and world rendering. |
+| Tracker / HarvestSignals | Adapt Minecraft profiles, inventories, chat, and model observations. |
+| HarvestAttribution | Coordinate authorization and accounting with an injectable monotonic clock. |
+| HarvestLedger / HarvestGate | Pure aggregation, deduplication, returns, and expiring permissions. |
+| SackReport / MutationDrops / Catalog | Parse reports, validate source-backed reward data, and normalize items. |
+| AttributionJournal / TrackerDebug | Bounded structured records and explicit local export. |
+
+When a report is missed, first inspect the loaded version and diagnostic reason. Add a minimal replay when the failure can be reproduced in the pure core. If the issue is target recognition or packet order, capture and verify it in-game rather than changing timing windows speculatively.
