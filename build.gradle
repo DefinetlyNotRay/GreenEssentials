@@ -1,0 +1,53 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17-SNAPSHOT'
+    id 'org.jetbrains.kotlin.jvm' version '2.4.10'
+    id 'com.gradleup.shadow' version '9.6.0'
+}
+version = '0.1.17'
+group = 'dev.greenhouse'
+repositories { mavenLocal(); maven { url = 'https://maven.notenoughupdates.org/releases/' }; mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
+def mc = providers.gradleProperty('minecraft_version').getOrElse('26.1.2')
+if (!(mc in ['26.1', '26.1.2'])) {
+    throw new GradleException("Unsupported minecraft_version: ${mc}; use 26.1 or 26.1.2")
+}
+configurations { shaded }
+configurations.implementation.extendsFrom(configurations.shaded)
+loom { accessWidenerPath = file('src/main/resources/greenessentials.accesswidener') }
+
+dependencies {
+    shaded("org.notenoughupdates.moulconfig:modern-26.1:${providers.gradleProperty('moulconfig_version').getOrElse('4.7.2')}") { transitive = false }
+    minecraft "com.mojang:minecraft:${mc}"
+    implementation 'net.fabricmc:fabric-loader:0.19.3'
+    implementation "net.fabricmc.fabric-api:fabric-api:${mc == '26.1' ? '0.145.1+26.1' : '0.155.2+26.1.2'}"
+    implementation 'net.fabricmc:fabric-language-kotlin:1.13.13+kotlin.2.4.10'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.14.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+java { toolchain.languageVersion = JavaLanguageVersion.of(25); withSourcesJar() }
+kotlin { jvmToolchain(25) }
+test { useJUnitPlatform() }
+processResources {
+    inputs.property 'minecraft_version', mc
+    inputs.property 'mod_version', project.version
+    filesMatching('fabric.mod.json') { expand(minecraft_version: mc, mod_version: project.version) }
+}
+tasks.named('jar') {
+    archiveClassifier = 'nodeps'
+    destinationDirectory = layout.buildDirectory.dir('badjars')
+}
+tasks.named('shadowJar') {
+    archiveFileName = "greenessentials-${project.version}-mc${mc}.jar"
+    configurations = [project.configurations.shaded]
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    mergeServiceFiles()
+    relocate 'io.github.notenoughupdates.moulconfig', 'dev.greenhouse.deps.moulconfig'
+    from('LICENSE')
+    from('LIBNINEPATCH-LICENSE')
+    from('MOULCONFIG-LGPL-3.0.txt')
+    from('MOULCONFIG-GPL-3.0.txt')
+    from('SOURCE-AND-REBUILD.md')
+    filesMatching('META-INF/services/**') { duplicatesStrategy = DuplicatesStrategy.INCLUDE }
+    filesMatching('META-INF/*.kotlin_module') { duplicatesStrategy = DuplicatesStrategy.INCLUDE }
+    from('THIRD-PARTY-NOTICES.md')
+}
+tasks.named('assemble') { dependsOn tasks.named('shadowJar') }

@@ -1,0 +1,11 @@
+/.gradle/
+/.kotlin/
+/build/
+/run/
+/.idea/
+*.iml
+*.hprof
+*.log
+.env
+.env.*
+/legacy-artifacts/

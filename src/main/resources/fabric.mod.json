@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "greenhouse",
+  "version": "${mod_version}",
+  "name": "GreenEssentials",
+  "description": "Standalone Greenhouse layouts and harvest profit tracking, extracted from SkyHanni.",
+  "authors": [
+    "DefinetlyNotRay"
+  ],
+  "contributors": [
+    "SkyHanni contributors",
+    "Moulberry (MoulConfig)",
+    "nea89 (MoulConfig)"
+  ],
+  "license": "LGPL-2.1-only",
+  "environment": "client",
+  "accessWidener": "greenessentials.accesswidener",
+  "entrypoints": {
+    "client": [
+      "dev.greenhouse.GreenhouseClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "${minecraft_version}",
+    "java": ">=25",
+    "fabric-api": "*",
+    "fabric-language-kotlin": ">=1.13.13+kotlin.2.4.10"
+  },
+  "contact": {
+    "homepage": "https://github.com/DefinetlyNotRay/GreenEssentials",
+    "sources": "https://github.com/DefinetlyNotRay/GreenEssentials",
+    "issues": "https://github.com/DefinetlyNotRay/GreenEssentials/issues"
+  }
+}

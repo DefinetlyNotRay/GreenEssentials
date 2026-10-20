@@ -1,0 +1,394 @@
+{
+  "format": 1,
+  "source": "https://hypixelskyblock.minecraft.wiki/w/Mutations",
+  "checkedOn": "2026-10-20",
+  "notes": "Crop item identities checked against each mutation wiki page. No quantities, prose, recipes, stages, or maturity rules are copied. Empty Jerryflower entry means the wiki explicitly lists no crop drops.",
+  "sources": {
+    "ALL_IN_ALOE": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/All-in_Aloe",
+      "revision": 850465,
+      "section": "Crop_Drops"
+    },
+    "ASHWREATH": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Ashwreath",
+      "revision": 850353,
+      "section": "Crop_Drops"
+    },
+    "BLASTBERRY": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Blastberry",
+      "revision": 850367,
+      "section": "Crop_Drops"
+    },
+    "CHEESEBITE": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Cheesebite",
+      "revision": 850369,
+      "section": "Crop_Drops"
+    },
+    "CHLORONITE": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Chloronite",
+      "revision": 850370,
+      "section": "Crop_Drops"
+    },
+    "CHOCOBERRY": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Chocoberry",
+      "revision": 850361,
+      "section": "Crop_Drops"
+    },
+    "CHOCONUT": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Choconut",
+      "revision": 850354,
+      "section": "Crop_Drops"
+    },
+    "CHORUS_FRUIT": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Chorus_Fruit",
+      "revision": 850529,
+      "section": "Crop_Drops"
+    },
+    "CINDERSHADE": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Cindershade",
+      "revision": 850362,
+      "section": "Crop_Drops"
+    },
+    "COALROOT": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Coalroot",
+      "revision": 850363,
+      "section": "Crop_Drops"
+    },
+    "CREAMBLOOM": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Creambloom",
+      "revision": 850364,
+      "section": "Crop_Drops"
+    },
+    "DEVOURER": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Devourer",
+      "revision": 850388,
+      "section": "Crop_Drops"
+    },
+    "DO_NOT_EAT_SHROOM": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Do-not-eat-shroom",
+      "revision": 850371,
+      "section": "Crop_Drops"
+    },
+    "DUSKBLOOM": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Duskbloom",
+      "revision": 850365,
+      "section": "Crop_Drops"
+    },
+    "DUSTGRAIN": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Dustgrain",
+      "revision": 833199,
+      "section": "Crop_Drops"
+    },
+    "FLESHTRAP": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Fleshtrap",
+      "revision": 850372,
+      "section": "Crop_Drops"
+    },
+    "GLASSCORN": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Glasscorn",
+      "revision": 850389,
+      "section": "Crop_Drops"
+    },
+    "GLOOMGOURD": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Gloomgourd",
+      "revision": 850355,
+      "section": "Crop_Drops"
+    },
+    "GODSEED": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Godseed",
+      "revision": 850390,
+      "section": "Crop_Drops"
+    },
+    "JERRYFLOWER": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Jerryflower",
+      "revision": 853873,
+      "section": "Crop_Drops"
+    },
+    "LONELILY": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Lonelily",
+      "revision": 850356,
+      "section": "Crop_Drops"
+    },
+    "MAGIC_JELLYBEAN": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Magic_Jellybean",
+      "revision": 850373,
+      "section": "Drops"
+    },
+    "NOCTILUME": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Noctilume",
+      "revision": 850374,
+      "section": "Crop_Drops"
+    },
+    "PHANTOMLEAF": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Phantomleaf",
+      "revision": 850391,
+      "section": "Crop_Drops"
+    },
+    "PLANTBOY_ADVANCE": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/PlantBoy_Advance",
+      "revision": 855998,
+      "section": "Crop_Drops"
+    },
+    "PUFFERCLOUD": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Puffercloud",
+      "revision": 850381,
+      "section": "Crop_Drops"
+    },
+    "SCOURROOT": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Scourroot",
+      "revision": 850357,
+      "section": "Crop_Drops"
+    },
+    "SHADEVINE": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Shadevine",
+      "revision": 850358,
+      "section": "Crop_Drops"
+    },
+    "SHELLFRUIT": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Shellfruit",
+      "revision": 850382,
+      "section": "Crop_Drops"
+    },
+    "SNOOZLING": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Snoozling",
+      "revision": 850375,
+      "section": "Crop_Drops"
+    },
+    "SOGGYBUD": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Soggybud",
+      "revision": 850376,
+      "section": "Crop_Drops"
+    },
+    "STARTLEVINE": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Startlevine",
+      "revision": 850383,
+      "section": "Crop_Drops"
+    },
+    "STOPLIGHT_PETAL": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Stoplight_Petal",
+      "revision": 860804,
+      "section": "Crop_Drops"
+    },
+    "THORNSHADE": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Thornshade",
+      "revision": 854281,
+      "section": "Crop_Drops"
+    },
+    "THUNDERLING": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Thunderling",
+      "revision": 856002,
+      "section": "Crop_Drops"
+    },
+    "TIMESTALK": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Timestalk",
+      "revision": 850392,
+      "section": "Crop_Drops"
+    },
+    "TURTLELLINI": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Turtlellini",
+      "revision": 850378,
+      "section": "Crop_Drops"
+    },
+    "VEILSHROOM": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Veilshroom",
+      "revision": 850359,
+      "section": "Crop_Drops"
+    },
+    "WITHERBLOOM": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Witherbloom",
+      "revision": 850360,
+      "section": "Crop_Drops"
+    },
+    "ZOMBUD": {
+      "url": "https://hypixelskyblock.minecraft.wiki/w/Zombud",
+      "revision": 850386,
+      "section": "Crop_Drops"
+    }
+  },
+  "drops": {
+    "ALL_IN_ALOE": [
+      "DOUBLE_PLANT",
+      "MOONFLOWER",
+      "WHEAT"
+    ],
+    "ASHWREATH": [
+      "NETHER_STALK"
+    ],
+    "BLASTBERRY": [
+      "INK_SACK:3",
+      "NETHER_STALK"
+    ],
+    "CHEESEBITE": [
+      "BROWN_MUSHROOM",
+      "CACTUS",
+      "RED_MUSHROOM",
+      "SUGAR_CANE"
+    ],
+    "CHLORONITE": [
+      "BROWN_MUSHROOM",
+      "CARROT_ITEM",
+      "POTATO_ITEM",
+      "RED_MUSHROOM",
+      "WILD_ROSE"
+    ],
+    "CHOCOBERRY": [
+      "INK_SACK:3",
+      "MELON",
+      "PUMPKIN"
+    ],
+    "CHOCONUT": [
+      "INK_SACK:3"
+    ],
+    "CHORUS_FRUIT": [
+      "CARROT_ITEM",
+      "POTATO_ITEM",
+      "SUGAR_CANE"
+    ],
+    "CINDERSHADE": [
+      "NETHER_STALK",
+      "WILD_ROSE"
+    ],
+    "COALROOT": [
+      "CARROT_ITEM",
+      "NETHER_STALK",
+      "POTATO_ITEM"
+    ],
+    "CREAMBLOOM": [
+      "INK_SACK:3"
+    ],
+    "DEVOURER": [
+      "BROWN_MUSHROOM",
+      "PUMPKIN",
+      "RED_MUSHROOM"
+    ],
+    "DO_NOT_EAT_SHROOM": [
+      "BROWN_MUSHROOM",
+      "CARROT_ITEM",
+      "POTATO_ITEM",
+      "RED_MUSHROOM"
+    ],
+    "DUSKBLOOM": [
+      "DOUBLE_PLANT",
+      "MOONFLOWER",
+      "WHEAT"
+    ],
+    "DUSTGRAIN": [
+      "WHEAT"
+    ],
+    "FLESHTRAP": [
+      "CARROT_ITEM",
+      "POTATO_ITEM",
+      "PUMPKIN"
+    ],
+    "GLASSCORN": [
+      "CACTUS",
+      "POTATO_ITEM"
+    ],
+    "GLOOMGOURD": [
+      "MELON",
+      "PUMPKIN"
+    ],
+    "GODSEED": [
+      "BROWN_MUSHROOM",
+      "CACTUS",
+      "CARROT_ITEM",
+      "DOUBLE_PLANT",
+      "INK_SACK:3",
+      "MELON",
+      "MOONFLOWER",
+      "NETHER_STALK",
+      "POTATO_ITEM",
+      "PUMPKIN",
+      "RED_MUSHROOM",
+      "SUGAR_CANE",
+      "WHEAT",
+      "WILD_ROSE"
+    ],
+    "JERRYFLOWER": [],
+    "LONELILY": [
+      "CARROT_ITEM",
+      "POTATO_ITEM",
+      "PUMPKIN"
+    ],
+    "MAGIC_JELLYBEAN": [
+      "DOUBLE_PLANT",
+      "MOONFLOWER",
+      "SUGAR_CANE"
+    ],
+    "NOCTILUME": [
+      "CACTUS",
+      "WILD_ROSE"
+    ],
+    "PHANTOMLEAF": [
+      "CARROT_ITEM",
+      "POTATO_ITEM"
+    ],
+    "PLANTBOY_ADVANCE": [
+      "DOUBLE_PLANT",
+      "MOONFLOWER",
+      "WHEAT"
+    ],
+    "PUFFERCLOUD": [
+      "BROWN_MUSHROOM",
+      "DOUBLE_PLANT",
+      "MOONFLOWER",
+      "RED_MUSHROOM"
+    ],
+    "SCOURROOT": [
+      "CARROT_ITEM",
+      "POTATO_ITEM"
+    ],
+    "SHADEVINE": [
+      "CACTUS",
+      "SUGAR_CANE"
+    ],
+    "SHELLFRUIT": [
+      "INK_SACK:3"
+    ],
+    "SNOOZLING": [
+      "CACTUS",
+      "DOUBLE_PLANT",
+      "MOONFLOWER",
+      "SUGAR_CANE"
+    ],
+    "SOGGYBUD": [
+      "MELON"
+    ],
+    "STARTLEVINE": [
+      "CACTUS",
+      "SUGAR_CANE"
+    ],
+    "STOPLIGHT_PETAL": [
+      "CACTUS",
+      "WILD_ROSE"
+    ],
+    "THORNSHADE": [
+      "BROWN_MUSHROOM",
+      "RED_MUSHROOM",
+      "WILD_ROSE"
+    ],
+    "THUNDERLING": [
+      "CACTUS",
+      "MELON",
+      "WILD_ROSE"
+    ],
+    "TIMESTALK": [
+      "CACTUS",
+      "SUGAR_CANE"
+    ],
+    "TURTLELLINI": [
+      "MELON"
+    ],
+    "VEILSHROOM": [
+      "BROWN_MUSHROOM",
+      "RED_MUSHROOM"
+    ],
+    "WITHERBLOOM": [
+      "WILD_ROSE"
+    ],
+    "ZOMBUD": [
+      "PUMPKIN",
+      "WILD_ROSE"
+    ]
+  }
+}
