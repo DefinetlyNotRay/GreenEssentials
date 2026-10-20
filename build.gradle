@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.17-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom' version '1.17.21'
     id 'org.jetbrains.kotlin.jvm' version '2.4.10'
     id 'com.gradleup.shadow' version '9.6.0'
 }
@@ -51,3 +51,37 @@ tasks.named('shadowJar') {
     from('THIRD-PARTY-NOTICES.md')
 }
 tasks.named('assemble') { dependsOn tasks.named('shadowJar') }
+
+// Check the installable shaded artifact, not just intermediate compiler output.
+tasks.register('verifyDistribution') {
+    dependsOn tasks.named('shadowJar')
+    inputs.file(tasks.named('shadowJar').flatMap { it.archiveFile })
+    doLast {
+        def archive = tasks.named('shadowJar').get().archiveFile.get().asFile
+        new java.util.zip.ZipFile(archive).withCloseable { zip ->
+            def required = [
+                'fabric.mod.json', 'greenessentials.accesswidener',
+                'dev/greenhouse/deps/moulconfig/gui/MoulConfigEditor.class',
+                'META-INF/services/dev.greenhouse.deps.moulconfig.common.IMinecraft',
+                'mutation-drops.json', 'LICENSE', 'LIBNINEPATCH-LICENSE',
+                'MOULCONFIG-LGPL-3.0.txt', 'MOULCONFIG-GPL-3.0.txt',
+                'THIRD-PARTY-NOTICES.md', 'SOURCE-AND-REBUILD.md'
+            ]
+            required.each { name ->
+                if (zip.getEntry(name) == null) throw new GradleException("Missing distribution entry: $name")
+            }
+            def metadata = new groovy.json.JsonSlurper().parse(zip.getInputStream(zip.getEntry('fabric.mod.json')))
+            if (metadata.id != 'greenhouse' || metadata.version != project.version.toString() || metadata.depends.minecraft != mc) {
+                throw new GradleException('Distribution metadata does not match this build')
+            }
+            def service = zip.getInputStream(zip.getEntry(required[3])).getText('UTF-8').trim()
+            if (service != 'dev.greenhouse.deps.moulconfig.platform.MoulConfigPlatform') {
+                throw new GradleException('MoulConfig service provider was not relocated correctly')
+            }
+            if (zip.entries().any { it.name.startsWith('io/github/notenoughupdates/moulconfig/') }) {
+                throw new GradleException('Unrelocated MoulConfig classes in distribution')
+            }
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('verifyDistribution') }
