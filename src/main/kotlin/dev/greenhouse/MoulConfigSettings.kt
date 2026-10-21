@@ -113,6 +113,9 @@ class HudOptions {
 }
 
 class TrackerOptions {
+    @JvmField @Expose @ConfigOption(name="Compact Crops",desc="Display enchanted and compacted crops with exact leftovers. Does not craft items or change profit.")
+    @ConfigEditorBoolean val compact = setting(Storage.settings.compactCrops) { Storage.settings.compactCrops=it }
+
     @JvmField @Expose @ConfigOption(name="Enabled",desc="Track confirmed harvest gains on Greenhouse plots.")
     @ConfigEditorBoolean val enabled = setting(Storage.settings.enabled) { Storage.settings.enabled=it; Tracker.resetRuntime() }
     @JvmField @ConfigOption(name="Refresh Prices",desc="Fetch current Bazaar and NPC prices.")

@@ -53,7 +53,7 @@ internal object GreenhouseCommands {
                 .then(literal("detect").executes { say(PlotDetection.status()) })
                 .then(literal("items").executes {
                     Tracker.flush()
-                    val rows = TrackerDisplay.rows(Tracker.view().items,Prices::price,Prices::displayName)
+                    val rows = TrackerDisplay.rows(Tracker.view().items,Prices::price,Prices::displayName,Storage.settings.compactCrops)
                     if (rows.isEmpty()) say("No harvested items tracked yet.")
                     else rows.forEach { say("${Tracker.number(it.count.toDouble())}x ${it.name}: ${it.value?.let(Tracker::number) ?: "Unpriced"} coins") }
                     1

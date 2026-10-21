@@ -24,6 +24,7 @@ internal class Settings {
     var hudIcons = true
     var hudTime = true
     var hudPrices = true
+    var compactCrops = true
     var priceOverrides = mutableMapOf<String, Double>()
     var profiles = mutableMapOf<String, ProfileData>()
 }

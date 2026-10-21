@@ -11,13 +11,6 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 
-internal object TrackerDisplay {
-    data class Row(val id: String,val name: String,val count: Long,val value: Double?)
-    fun rows(items: Map<String,Long>,price: (String) -> Double?,name: (String) -> String): List<Row> =
-        items.filterValues { it > 0 }.map { (id,count) -> Row(id,name(id),count,price(id)?.times(count)) }
-            .sortedWith(compareByDescending<Row> { it.value ?: -1.0 }.thenBy { it.name })
-}
-
 internal object TrackerHud {
     data class Bounds(val x: Double,val y: Double,val width: Double,val height: Double) {
         fun contains(x: Double,y: Double) = x >= this.x && x < this.x+width && y >= this.y && y < this.y+height
@@ -91,7 +84,7 @@ internal object TrackerHud {
         val totals = Tracker.view()
         val now = System.currentTimeMillis()
         if (now-lastRefresh >= 250 || profile !== lastProfile || Tracker.mode != lastMode) {
-            rows = TrackerDisplay.rows(totals.items,Prices::price,Prices::displayName)
+            rows = TrackerDisplay.rows(totals.items,Prices::price,Prices::displayName,Storage.settings.compactCrops)
             lastRefresh = now; lastProfile = profile; lastMode = Tracker.mode
         }
         val font = client.font
@@ -168,7 +161,7 @@ internal object TrackerHud {
         if (iconLevel !== level) { icons.clear(); iconLevel = level }
         MutationAssets.stack(id)?.let { return it }
         return icons.getOrPut(id) {
-            val item = when (id) {
+            val item = when (Catalog.units[id]?.base ?: id) {
                 "WHEAT" -> Items.WHEAT; "SEEDS" -> Items.WHEAT_SEEDS; "CARROT_ITEM" -> Items.CARROT; "POTATO_ITEM" -> Items.POTATO
                 "NETHER_STALK" -> Items.NETHER_WART; "PUMPKIN" -> Items.PUMPKIN; "MELON" -> Items.MELON_SLICE
                 "INK_SACK:3" -> Items.COCOA_BEANS; "SUGAR_CANE" -> Items.SUGAR_CANE; "CACTUS" -> Items.CACTUS
