@@ -3,7 +3,7 @@
   "id": "greenhouse",
   "version": "${mod_version}",
   "name": "GreenEssentials",
-  "description": "Standalone Greenhouse layouts and harvest profit tracking, extracted from SkyHanni.",
+  "description": "Greenhouse layouts, harvest profit tracking, and JellyShort plant rendering.",
   "authors": [
     "DefinetlyNotRay"
   ],
@@ -31,5 +31,11 @@
     "homepage": "https://github.com/DefinetlyNotRay/GreenEssentials",
     "sources": "https://github.com/DefinetlyNotRay/GreenEssentials",
     "issues": "https://github.com/DefinetlyNotRay/GreenEssentials/issues"
+  },
+  "mixins": [
+    "greenessentials-jellyshort.mixins.json"
+  ],
+  "breaks": {
+    "jellyshort": "*"
   }
 }

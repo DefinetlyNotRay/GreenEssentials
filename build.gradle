@@ -3,7 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.4.10'
     id 'com.gradleup.shadow' version '9.6.0'
 }
-version = '0.1.19'
+version = '0.1.20'
 group = 'dev.greenhouse'
 repositories { mavenLocal(); maven { url = 'https://maven.notenoughupdates.org/releases/' }; mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
 def mc = providers.gradleProperty('minecraft_version').getOrElse('26.1.2')
@@ -65,7 +65,12 @@ tasks.register('verifyDistribution') {
                 'META-INF/services/dev.greenhouse.deps.moulconfig.common.IMinecraft',
                 'mutation-drops.json', 'LICENSE', 'LIBNINEPATCH-LICENSE',
                 'MOULCONFIG-LGPL-3.0.txt', 'MOULCONFIG-GPL-3.0.txt',
-                'THIRD-PARTY-NOTICES.md', 'SOURCE-AND-REBUILD.md'
+                'THIRD-PARTY-NOTICES.md', 'SOURCE-AND-REBUILD.md',
+                'greenessentials-jellyshort.mixins.json',
+                'dev/greenhouse/jellyshort/JellyShort.class',
+                'dev/greenhouse/jellyshort/mixin/EntityRenderDispatcherMixin.class',
+                'dev/greenhouse/jellyshort/mixin/ModelBlockRendererMixin.class',
+                'dev/greenhouse/jellyshort/mixin/SodiumBlockRendererMixin.class'
             ]
             required.each { name ->
                 if (zip.getEntry(name) == null) throw new GradleException("Missing distribution entry: $name")

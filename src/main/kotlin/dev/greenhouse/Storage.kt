@@ -25,6 +25,9 @@ internal class Settings {
     var hudTime = true
     var hudPrices = true
     var compactCrops = true
+    var jellyShortMode = "shorten"
+    var jellyShortAutomatic = true
+    var jellyShortHeight = 2
     var priceOverrides = mutableMapOf<String, Double>()
     var profiles = mutableMapOf<String, ProfileData>()
 }

@@ -50,6 +50,8 @@ class GreenEssentialsConfig : Config() {
     val tracker = TrackerOptions()
     @JvmField @Expose @Category(name="Layouts",desc="Greenhouse schematics and overlays.")
     val layouts = LayoutOptions()
+    @JvmField @Expose @Category(name="JellyShort",desc="Shorten or hide full-height Jellybean models.")
+    val jellyShort = JellyShortOptions()
     override fun getTitle(): StructuredText = StructuredText.of("GreenEssentials ${FabricLoader.getInstance().getModContainer("greenhouse").orElseThrow().metadata.version.friendlyString} by §cDefinetlyNotRay§r, config by §5Moulberry §rand §5nea89")
     override fun shouldAutoFocusSearchbar() = false
     override fun saveNow() = Storage.save()
@@ -130,4 +132,21 @@ class LayoutOptions {
     @ConfigEditorButton(buttonText="Open") val library = Runnable { open { GreenhouseScreen() } }
     @JvmField @ConfigOption(name="Plot Detection",desc="Open the Garden Configure Plots menu once to register Greenhouse plots.")
     @ConfigEditorInfoText val plots = ""
+}
+
+class JellyShortOptions {
+    @JvmField @Expose @ConfigOption(name="Mode",desc="Shorten keeps the selected bottom tiers. Hide removes the whole model. Off restores rendering. Blocks and hitboxes are unchanged.")
+    @ConfigEditorDropdown(values=["Shorten", "Hide", "Off"])
+    val mode = setting(listOf("shorten", "hide", "off").indexOf(Storage.settings.jellyShortMode).coerceAtLeast(0)) {
+        dev.greenhouse.jellyshort.JellyShort.setMode(listOf("shorten", "hide", "off")[it])
+    }
+    @JvmField @Expose @ConfigOption(name="Automatic Detection",desc="Detect Jellybean heads with all ten vertical model tiers. Partial models stay visible. This is not growth-stage detection.")
+    @ConfigEditorBoolean val automatic = setting(Storage.settings.jellyShortAutomatic) {
+        dev.greenhouse.jellyshort.JellyShort.setAutomatic(it)
+    }
+    @JvmField @Expose @ConfigOption(name="Visible Height",desc="Number of bottom tiers to retain when shortening. Manual marks and inspection are available through /jellyshort.")
+    @ConfigEditorSlider(minValue=1f,maxValue=8f,minStep=1f)
+    val height = setting(Storage.settings.jellyShortHeight.toFloat()) {
+        dev.greenhouse.jellyshort.JellyShort.setHeight(it.toInt())
+    }
 }

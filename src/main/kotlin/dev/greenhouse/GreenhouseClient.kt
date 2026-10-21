@@ -14,6 +14,15 @@ class GreenhouseClient : ClientModInitializer {
         MutationAssets.load()
         HarvestSignals.register()
         Storage.load()
+        dev.greenhouse.jellyshort.JellyShort.configure(
+            Storage.settings.jellyShortMode, Storage.settings.jellyShortAutomatic, Storage.settings.jellyShortHeight,
+        ) { config ->
+            Storage.settings.jellyShortMode = config.mode()
+            Storage.settings.jellyShortAutomatic = config.automatic()
+            Storage.settings.jellyShortHeight = config.height()
+            Storage.save()
+        }
+        dev.greenhouse.jellyshort.JellyShort.initialize()
         TrackerHud.registerControls()
         ClientTickEvents.END_CLIENT_TICK.register { Tracker.tick() }
         ClientLifecycleEvents.CLIENT_STOPPING.register { Tracker.flush(); Storage.save() }

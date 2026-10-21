@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "dev.greenhouse.jellyshort.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "EntityRenderDispatcherMixin",
+    "ModelBlockRendererMixin",
+    "SodiumBlockRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

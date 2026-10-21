@@ -19,9 +19,10 @@ internal object GreenhouseCommands {
             val greenhouseCommand = dispatcher.register(literal("greenhouse").executes {
                 Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(GreenhouseSettingsScreen()) }; 1
             }
+                .then(dev.greenhouse.jellyshort.JellyShort.command("jellyshort"))
                 .then(literal("settings").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(GreenhouseSettingsScreen()) }; 1 })
                 .then(literal("layouts").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(GreenhouseScreen()) }; 1 })
-                .then(literal("help").executes { say("/ge, /greenessentials, /greenhouse share all subcommands. /gelayouts opens layouts. /ge profile <name>, capture <name>, import <name> (clipboard), importfile <file>, use/rotate/export/delete <name>, unload, target <mutation|none|auto>, toggle, overlay, price <id> <coins>, prices, hud <x> <y>, debug, version, detect, items, stats, session, alltime, reset confirm") })
+                .then(literal("help").executes { say("/ge, /greenessentials, /greenhouse share all subcommands. /gelayouts opens layouts. /ge jellyshort controls Jellybean rendering. /ge profile <name>, capture <name>, import <name> (clipboard), importfile <file>, use/rotate/export/delete <name>, unload, target <mutation|none|auto>, toggle, overlay, price <id> <coins>, prices, hud <x> <y>, debug, version, detect, items, stats, session, alltime, reset confirm") })
                 .then(literal("profile").then(argument("name", StringArgumentType.word()).executes { ctx -> action {
                     Tracker.setProfile(StringArgumentType.getString(ctx, "name")); say("Profile: ${Tracker.profileName}")
                 } }))

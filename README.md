@@ -6,11 +6,13 @@ Standalone client Fabric mod for Hypixel SkyBlock Greenhouse layouts and harvest
 
 Minecraft **26.1 or 26.1.2**, Java **25**, Fabric Loader **0.19.0+**, Fabric API for your Minecraft version, and Fabric Language Kotlin **1.13.13+kotlin.2.4.10 or newer** are required. Use the GreenEssentials JAR matching your Minecraft version. Put the JAR and those dependencies in your instance's `mods` folder.
 
-Build from this directory with `./gradlew build` (Windows: `.\gradlew.bat build`). The installable JAR is `build/libs/greenessentials-0.1.19-mc26.1.2.jar`; the `-sources.jar` is source code, not the mod to install. Run tests with `./gradlew test`.
+Build from this directory with `./gradlew build` (Windows: `.\gradlew.bat build`). The installable JAR is `build/libs/greenessentials-0.1.20-mc26.1.2.jar`; the `-sources.jar` is source code, not the mod to install. Run tests with `./gradlew test`.
 
-For Minecraft **26.1**, build with `./gradlew build -Pminecraft_version=26.1` (PowerShell: `.\gradlew.bat build '-Pminecraft_version=26.1'`). This produces `build/libs/greenessentials-0.1.19-mc26.1.jar` with metadata requiring 26.1. The default build targets 26.1.2.
+For Minecraft **26.1**, build with `./gradlew build -Pminecraft_version=26.1` (PowerShell: `.\gradlew.bat build '-Pminecraft_version=26.1'`). This produces `build/libs/greenessentials-0.1.20-mc26.1.jar` with metadata requiring 26.1. The default build targets 26.1.2.
 
 ## Use
+
+JellyShort is included: remove the separate JellyShort JAR before installing GreenEssentials. `/ge` > **JellyShort** controls shortening/hiding, automatic detection, and visible height (1–8). Settings persist; manual marks clear when the world changes. `/jellyshort` remains available, alongside `/ge jellyshort` and the other full command roots, and `/gejellyshort`. Vanilla and optional Sodium hooks hide the upper heads and sugar cane models without changing hitboxes. Automatic detection requires all ten model tiers; it does not establish server growth stage. Use `/jellyshort mark`, `unmark`, `clear`, or `inspect` for manual control. Manual marks affect other display entities in the marked column too.
 
 Crop counts in the HUD and `/ge items` automatically use enchanted and compacted forms, with exact leftovers. Toggle **Profit Tracker > Compact Crops** in `/ge` to show raw counts. This changes display only; stored totals and profit stay unchanged.
 
