@@ -65,7 +65,7 @@ private fun open(screen: () -> net.minecraft.client.gui.screens.Screen) {
 }
 
 class AboutOptions {
-    @JvmField @ConfigOption(name="GreenEssentials",desc="Standalone Greenhouse tools by DefinetlyNotRay.")
+    @JvmField @ConfigOption(name="GreenEssentials",desc="Greenhouse tools by Definetlynotray.")
     @ConfigEditorInfoText val name = ""
     @JvmField @Expose @ConfigOption(name="Used Software",desc="Software, source code, and licenses used by GreenEssentials.")
     @Accordion val software = UsedSoftwareOptions()
