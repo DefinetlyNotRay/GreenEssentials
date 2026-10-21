@@ -19,7 +19,7 @@ internal object HarvestSignals {
     private val pending = mutableMapOf<String,Pending>()
     private val placements = PlacementHistory()
     private var wasAvailable = false
-    private fun available(): Boolean = Storage.settings.enabled && Storage.profile != null && currentPlot() != null && Minecraft.getInstance().screen == null
+    private fun available(): Boolean = Storage.settings.enabled && Storage.profile != null && currentPlot() != null && Minecraft.getInstance().currentScreen == null
     private fun inside(position: LorenzVec): Boolean = currentPlot()?.let { GreenhouseGridScanner.isInsideGrid(it,position) && position.y in 60.0..100.0 } == true
     fun active() = available() && Tracker.activeHarvest()
     fun reset() { pending.clear(); placements.clear(); wasAvailable = false }
@@ -138,7 +138,7 @@ internal object HarvestSignals {
         val available = available()
         if (!available) {
             if (wasAvailable) {
-                Tracker.clearHarvestEvidence(if (Minecraft.getInstance().screen != null) "screen_open" else "context_unavailable")
+                Tracker.clearHarvestEvidence(if (Minecraft.getInstance().currentScreen != null) "screen_open" else "context_unavailable")
                 reset()
             }
             return

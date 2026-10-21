@@ -52,6 +52,6 @@ internal class HudEditorScreen : Screen(Component.literal("Edit GreenEssentials 
         Storage.save()
         return true
     }
-    override fun onClose() { Storage.save(); Minecraft.getInstance().setScreen(GreenhouseSettingsScreen()) }
+    override fun onClose() { Storage.save(); Minecraft.getInstance().openScreen(GreenhouseSettingsScreen()) }
     override fun isPauseScreen() = false
 }

@@ -2,7 +2,7 @@
 
 GreenEssentials is maintained by DefinetlyNotRay. Garden plot detection and the full-screen settings editor bridge are adapted from SkyHanni and its contributors; existing source notices are retained.
 
-MoulConfig 4.7.2: Moulberry, nea89 / Linnea Graef, and contributors.
+MoulConfig 4.7.2 (Minecraft 26.1–26.2) / 4.8.0 (Minecraft 26.3): Moulberry, nea89 / Linnea Graef, and contributors.
 Source: https://github.com/NotEnoughUpdates/MoulConfig
 License: LGPL-3.0-or-later, as documented by upstream; text in MOULCONFIG-LGPL-3.0.txt. MoulConfig is bundled with its package relocated to dev.greenhouse.deps.moulconfig to avoid clashes.
 

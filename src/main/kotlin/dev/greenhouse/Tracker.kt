@@ -66,7 +66,7 @@ internal object Tracker {
             if (inGreenhouse()) Prices.refresh()
         }
         HarvestSignals.tick()
-        val eligible = Storage.settings.enabled && Storage.profile != null && currentPlot() != null && client.screen == null && now-lastPest > 3000
+        val eligible = Storage.settings.enabled && Storage.profile != null && currentPlot() != null && client.currentScreen == null && now-lastPest > 3000
         if (eligible && lastEligible && HarvestSignals.active()) {
             Storage.profile?.let { it.activeMillis += elapsed }
             Storage.scope?.let { sessions.addTime(it,elapsed) }
@@ -107,7 +107,7 @@ internal object Tracker {
             if (text.startsWith("[Sacks]")) trace("sack_report_rejected", reason = "disabled_or_outside_profile_plot")
             return
         }
-        if (Minecraft.getInstance().screen == null) {
+        if (Minecraft.getInstance().currentScreen == null) {
             val patterns = listOf(
                 Regex("You caught(?: [an]+)?(?: x\\d+)? (Timestalk Clone|Zombuddy) Shards?!"),
                 Regex("CHARM! You charmed the .+ and received \\d+ (Timestalk Clone|Zombuddy) Shards?!"),
@@ -122,8 +122,8 @@ internal object Tracker {
             Prices.idForName(match.groupValues[2])?.let { attribution.exclude(it, match.groupValues[1].replace(",", "").toLong()) }
         }
         if (!text.startsWith("[Sacks]")) return
-        if (Minecraft.getInstance().screen != null || !lastEligible) {
-            trace("sack_report_rejected", reason = if (Minecraft.getInstance().screen != null) "screen_open" else "context_ineligible")
+        if (Minecraft.getInstance().currentScreen != null || !lastEligible) {
+            trace("sack_report_rejected", reason = if (Minecraft.getInstance().currentScreen != null) "screen_open" else "context_ineligible")
             return
         }
         val hovers = linkedSetOf<String>()

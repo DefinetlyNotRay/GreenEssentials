@@ -61,7 +61,7 @@ private fun <T> setting(value: T,apply: (T) -> Unit): Property<T> = Property.of(
     property.addObserver { _,new -> apply(new); Storage.save() }
 }
 private fun open(screen: () -> net.minecraft.client.gui.screens.Screen) {
-    Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(screen()) }
+    Minecraft.getInstance().schedule { Minecraft.getInstance().openScreen(screen()) }
 }
 
 class AboutOptions {
@@ -71,7 +71,7 @@ class AboutOptions {
     @Accordion val software = UsedSoftwareOptions()
 }
 
-private fun sourceLink(url: String) = Runnable { net.minecraft.util.Util.getPlatform().openUri(url) }
+private fun sourceLink(url: String) = Runnable { openExternalLink(url) }
 
 class UsedSoftwareOptions {
     @JvmField @ConfigOption(name="Mutation crop data",desc="Crop drop identities checked against Hypixel SkyBlock Wiki mutation pages. Each entry records its source page and revision.")

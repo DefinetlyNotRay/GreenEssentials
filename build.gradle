@@ -3,22 +3,32 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.4.10'
     id 'com.gradleup.shadow' version '9.6.0'
 }
-version = '0.1.21'
+version = '0.1.22'
 group = 'dev.greenhouse'
 repositories { mavenLocal(); maven { url = 'https://maven.notenoughupdates.org/releases/' }; mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
 def mc = providers.gradleProperty('minecraft_version').getOrElse('26.1.2')
-if (!(mc in ['26.1', '26.1.2'])) {
-    throw new GradleException("Unsupported minecraft_version: ${mc}; use 26.1 or 26.1.2")
+def targets = [
+    '26.1': [api: '0.145.1+26.1', moul: '26.1', config: '4.7.2'],
+    '26.1.2': [api: '0.155.2+26.1.2', moul: '26.1', config: '4.7.2'],
+    '26.2': [api: '0.161.0+26.2', moul: '26.2', config: '4.7.2'],
+    '26.3': [api: '0.164.0+26.3', moul: '26.3', config: '4.8.0'],
+]
+if (!targets.containsKey(mc)) {
+    throw new GradleException("Unsupported minecraft_version: ${mc}; use ${targets.keySet().join(', ')}")
 }
+def target = targets[mc]
+kotlin.sourceSets.main.kotlin.srcDir("src/compat/${mc in ['26.1', '26.1.2'] ? '26.1' : '26.2'}/kotlin")
 configurations { shaded }
 configurations.implementation.extendsFrom(configurations.shaded)
-loom { accessWidenerPath = file('src/main/resources/greenessentials.accesswidener') }
+loom { accessWidenerPath = file(mc == '26.3' ? 'src/compat/26.3/resources/greenessentials.accesswidener' : 'src/main/resources/greenessentials.accesswidener') }
+kotlin.sourceSets.main.kotlin.srcDir("src/compat/${mc == '26.3' ? '26.3' : 'legacy'}/kotlin")
+sourceSets.main.java.srcDir("src/compat/${mc == '26.3' ? '26.3' : 'legacy'}/java")
 
 dependencies {
-    shaded("org.notenoughupdates.moulconfig:modern-26.1:${providers.gradleProperty('moulconfig_version').getOrElse('4.7.2')}") { transitive = false }
+    shaded("org.notenoughupdates.moulconfig:modern-${target.moul}:${providers.gradleProperty('moulconfig_version').getOrElse(target.config)}") { transitive = false }
     minecraft "com.mojang:minecraft:${mc}"
     implementation 'net.fabricmc:fabric-loader:0.19.3'
-    implementation "net.fabricmc.fabric-api:fabric-api:${mc == '26.1' ? '0.145.1+26.1' : '0.155.2+26.1.2'}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${target.api}"
     implementation 'net.fabricmc:fabric-language-kotlin:1.13.13+kotlin.2.4.10'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.14.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -29,6 +39,10 @@ test { useJUnitPlatform() }
 processResources {
     inputs.property 'minecraft_version', mc
     inputs.property 'mod_version', project.version
+    if (mc == '26.3') {
+        exclude { it.file == file('src/main/resources/greenessentials.accesswidener') }
+        from('src/compat/26.3/resources')
+    }
     filesMatching('fabric.mod.json') { expand(minecraft_version: mc, mod_version: project.version) }
 }
 tasks.named('jar') {
@@ -52,6 +66,19 @@ tasks.named('shadowJar') {
 }
 tasks.named('assemble') { dependsOn tasks.named('shadowJar') }
 
+// Inspect descriptors without initializing Minecraft or any native libraries.
+def methodDescriptors = { byte[] bytes ->
+    def methods = [:].withDefault { [] }
+    new org.objectweb.asm.ClassReader(bytes).accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
+        @Override
+        org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+            methods[name] << descriptor
+            return null
+        }
+    }, org.objectweb.asm.ClassReader.SKIP_CODE | org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES)
+    methods
+}
+
 // Check the installable shaded artifact, not just intermediate compiler output.
 tasks.register('verifyDistribution') {
     dependsOn tasks.named('shadowJar')
@@ -74,6 +101,32 @@ tasks.register('verifyDistribution') {
             ]
             required.each { name ->
                 if (zip.getEntry(name) == null) throw new GradleException("Missing distribution entry: $name")
+            }
+            def expectedWidener = file(mc == '26.3' ? 'src/compat/26.3/resources/greenessentials.accesswidener' : 'src/main/resources/greenessentials.accesswidener').bytes
+            if (!Arrays.equals(expectedWidener, zip.getInputStream(zip.getEntry('greenessentials.accesswidener')).bytes)) {
+                throw new GradleException('Packaged access widener does not match target')
+            }
+            def targetClass = 'net/minecraft/client/renderer/entity/EntityRenderDispatcher.class'
+            def minecraftJar = sourceSets.main.compileClasspath.files.find { candidate ->
+                if (!candidate.isFile() || !candidate.name.endsWith('.jar')) return false
+                new java.util.zip.ZipFile(candidate).withCloseable { it.getEntry(targetClass) != null }
+            }
+            if (minecraftJar == null) throw new GradleException('Could not locate Minecraft for render-hook validation')
+            new java.util.zip.ZipFile(minecraftJar).withCloseable { minecraftZip ->
+                def hooks = [
+                    [targetClass, 'shouldRender', 'dev/greenhouse/jellyshort/mixin/EntityRenderDispatcherMixin.class', 'jellyshort$visible', 'Z', 'CallbackInfoReturnable'],
+                    ['net/minecraft/client/renderer/block/ModelBlockRenderer.class', 'tesselateBlock', 'dev/greenhouse/jellyshort/mixin/ModelBlockRendererMixin.class', 'jellyshort$hideCane', 'V', 'CallbackInfo'],
+                ]
+                hooks.each { hook ->
+                    def targetMethods = methodDescriptors(minecraftZip.getInputStream(minecraftZip.getEntry(hook[0])).bytes)[hook[1]]
+                    def handlerMethods = methodDescriptors(zip.getInputStream(zip.getEntry(hook[2])).bytes)[hook[3]]
+                    def expected = targetMethods.findAll { it.endsWith(")${hook[4]}") }.collect {
+                        it.substring(0, it.lastIndexOf(')')) + "Lorg/spongepowered/asm/mixin/injection/callback/${hook[5]};)V"
+                    }
+                    if (!handlerMethods.any { expected.contains(it) }) {
+                        throw new GradleException("Render hook ${hook[3]} does not match Minecraft ${mc}")
+                    }
+                }
             }
             def metadata = new groovy.json.JsonSlurper().parse(zip.getInputStream(zip.getEntry('fabric.mod.json')))
             if (metadata.id != 'greenhouse' || metadata.version != project.version.toString() || metadata.depends.minecraft != mc) {

@@ -10,7 +10,7 @@ Use descriptive names, conventional Kotlin formatting, and explicit state transi
 
 ## Verification
 
-Run `./gradlew build -Pminecraft_version=26.1` and then `./gradlew build -Pminecraft_version=26.1.2` (quote the property argument in PowerShell). Builds share an output directory, so do not run both targets concurrently in one checkout. Build includes tests and final-JAR verification. GitHub Actions checks both targets independently.
+Run `./gradlew build -Pminecraft_version=VERSION` sequentially for 26.1, 26.1.2, 26.2, and 26.3 (quote the property argument in PowerShell). Builds share an output directory, so do not run targets concurrently in one checkout. Build includes tests and final-JAR verification. GitHub Actions checks all four targets independently. Version-specific Minecraft calls belong in src/compat; keep harvest logic shared.
 
 Regression tests should reproduce a failure or verify a meaningful invariant. Prefer event-sequence replays with a fake clock over sleeps. Test rejected gains and duplicate events as well as successful harvests.
 

@@ -1,10 +1,8 @@
 package dev.greenhouse
 
 import net.minecraft.client.Minecraft
-import org.lwjgl.util.tinyfd.TinyFileDialogs
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** Standalone equivalents of the controller methods used by the original SkyHanni layout library. */
@@ -60,22 +58,25 @@ internal object LibraryActions {
         if (!dialogOpen.compareAndSet(false,true)) return
         val scope = Storage.scope
         val directory = Storage.directory.resolve("layouts").toAbsolutePath()
-        CompletableFuture.runAsync {
-            try {
-                Files.createDirectories(directory)
-                check(TinyFileDialogs.tinyfd_messageBox("tinyfd_query","","ok","info",1) != 0) { "No graphical file picker is available." }
-                val defaultPath = if (filename == null) directory.toString()+java.io.File.separator else directory.resolve(filename).toString()
-                val selected = if (save) TinyFileDialogs.tinyfd_saveFileDialog(title,defaultPath,null,null)
-                    else TinyFileDialogs.tinyfd_openFileDialog(title,defaultPath,null,null,false)
-                if (selected != null) Minecraft.getInstance().execute {
-                    perform {
-                        require(Storage.scope == scope) { "Your profile changed while choosing a file. Please try again." }
-                        onSelected(Path.of(selected))
-                    }
+        try {
+            Files.createDirectories(directory)
+            val defaultPath = if (filename == null) directory.toString()+java.io.File.separator else directory.resolve(filename).toString()
+            chooseLayoutFile(save,title,defaultPath).whenComplete { selected,error ->
+                Minecraft.getInstance().execute {
+                    try {
+                        perform {
+                            if (error != null) throw IllegalStateException("Could not open the file picker.",error)
+                            if (selected != null) {
+                                require(Storage.scope == scope) { "Your profile changed while choosing a file. Please try again." }
+                                onSelected(Path.of(selected))
+                            }
+                        }
+                    } finally { dialogOpen.set(false) }
                 }
-            } catch (error: Exception) {
-                Minecraft.getInstance().execute { say(error.message ?: "Could not open the file picker.") }
-            } finally { dialogOpen.set(false) }
+            }
+        } catch (error: Exception) {
+            dialogOpen.set(false)
+            say(error.message ?: "Could not open the file picker.")
         }
     }
 }

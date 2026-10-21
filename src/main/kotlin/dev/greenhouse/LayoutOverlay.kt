@@ -34,7 +34,7 @@ internal object LayoutOverlay {
                     state.submit(stack,ctx.submitNodeCollector(),15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,0)
                     stack.popPose()
                 }
-                stack.translate(size/2, 1.0, size/2); stack.mulPose(camera.orientation); stack.scale(0.018f,-0.018f,0.018f)
+                stack.translate(size/2, 1.0, size/2); rotateLabel(stack,camera.orientation); stack.scale(0.018f,-0.018f,0.018f)
                 val text = Component.literal(missing.cropId.replace('_',' '))
                 ctx.submitNodeCollector().submitText(stack, -Minecraft.getInstance().font.width(text)/2f, 0f, text.visualOrderText,
                     false, Font.DisplayMode.NORMAL, 15728880, -1, 0x88000000.toInt(), 0)

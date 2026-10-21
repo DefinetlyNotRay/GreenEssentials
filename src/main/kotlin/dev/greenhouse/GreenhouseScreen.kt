@@ -7,7 +7,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.network.chat.Component
-import org.lwjgl.glfw.GLFW
+import com.mojang.blaze3d.platform.InputConstants
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.floor
@@ -341,12 +341,12 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
     override fun keyPressed(input: KeyEvent): Boolean {
         if (pendingRename != null) {
             when (input.key()) {
-                GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> saveRename()
-                GLFW.GLFW_KEY_BACKSPACE -> {
+                InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> saveRename()
+                InputConstants.KEY_BACKSPACE -> {
                     renameText = if (renameTextSelected) "" else renameText.dropLast(1)
                     renameTextSelected = false
                 }
-                GLFW.GLFW_KEY_ESCAPE -> cancelRename()
+                InputConstants.KEY_ESCAPE -> cancelRename()
                 else -> return super.keyPressed(input)
             }
             return true

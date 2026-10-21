@@ -17,11 +17,11 @@ internal object GreenhouseCommands {
                 .suggests { _, builder -> Layouts.all.keys.filter { it.startsWith(builder.remaining, true) }.forEach(builder::suggest); builder.buildFuture() }
                 .executes { ctx -> action { block(StringArgumentType.getString(ctx, "name")) } })
             val greenhouseCommand = dispatcher.register(literal("greenhouse").executes {
-                Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(GreenhouseSettingsScreen()) }; 1
+                Minecraft.getInstance().schedule { Minecraft.getInstance().openScreen(GreenhouseSettingsScreen()) }; 1
             }
                 .then(dev.greenhouse.jellyshort.JellyShort.command("jellyshort"))
-                .then(literal("settings").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(GreenhouseSettingsScreen()) }; 1 })
-                .then(literal("layouts").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(GreenhouseScreen()) }; 1 })
+                .then(literal("settings").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().openScreen(GreenhouseSettingsScreen()) }; 1 })
+                .then(literal("layouts").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().openScreen(GreenhouseScreen()) }; 1 })
                 .then(literal("help").executes { say("/ge, /greenessentials, /greenhouse share all subcommands. /gelayouts opens layouts. /ge jellyshort controls Jellybean rendering. /ge profile <name>, capture <name>, import <name> (clipboard), importfile <file>, use/rotate/export/delete <name>, unload, target <mutation|none|auto>, toggle, overlay, price <id> <coins>, prices, hud <x> <y>, debug, version, detect, items, stats, session, alltime, reset confirm") })
                 .then(literal("profile").then(argument("name", StringArgumentType.word()).executes { ctx -> action {
                     Tracker.setProfile(StringArgumentType.getString(ctx, "name")); say("Profile: ${Tracker.profileName}")
@@ -46,7 +46,7 @@ internal object GreenhouseCommands {
                     Storage.settings.priceOverrides[StringArgumentType.getString(ctx, "id").uppercase()] = value; Storage.save()
                 } })))
                 .then(literal("prices").executes { Prices.refresh(true); say("Refreshing Bazaar / NPC prices.") })
-                .then(literal("hud").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().setScreen(HudEditorScreen()) }; 1 }.then(argument("x", IntegerArgumentType.integer(0)).then(argument("y", IntegerArgumentType.integer(0)).executes { ctx ->
+                .then(literal("hud").executes { Minecraft.getInstance().schedule { Minecraft.getInstance().openScreen(HudEditorScreen()) }; 1 }.then(argument("x", IntegerArgumentType.integer(0)).then(argument("y", IntegerArgumentType.integer(0)).executes { ctx ->
                     Storage.settings.hudX = IntegerArgumentType.getInteger(ctx,"x"); Storage.settings.hudY = IntegerArgumentType.getInteger(ctx,"y"); Storage.save(); 1
                 })))
                 .then(literal("debug").executes { action { TrackerDebug.export() } })

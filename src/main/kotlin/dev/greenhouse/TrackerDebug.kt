@@ -21,7 +21,7 @@ internal object TrackerDebug {
             "enabled" to Storage.settings.enabled,
             "profileDetected" to (Storage.scope != null),
             "inGreenhouse" to inGreenhouse(),
-            "screen" to Minecraft.getInstance().screen?.javaClass?.simpleName,
+            "screen" to Minecraft.getInstance().currentScreen?.javaClass?.simpleName,
             "droppedEvents" to dropped,
             "events" to events,
         )

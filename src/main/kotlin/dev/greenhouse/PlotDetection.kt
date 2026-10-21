@@ -71,7 +71,7 @@ internal object PlotDetection {
     }
     fun scanMenu() {
         val client = Minecraft.getInstance()
-        val screen = client.screen as? AbstractContainerScreen<*> ?: return
+        val screen = client.currentScreen as? AbstractContainerScreen<*> ?: return
         if (clean(screen.title.string).trim() != "Configure Plots") return
         if (sidebar().firstOrNull()?.contains("SKYBLOCK",true) != true) return
         val profile = Storage.profile ?: return

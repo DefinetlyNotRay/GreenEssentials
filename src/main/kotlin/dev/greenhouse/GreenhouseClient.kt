@@ -37,7 +37,7 @@ class GreenhouseClient : ClientModInitializer {
         ClientReceiveMessageEvents.GAME.register { _, overlay -> if (!overlay) messages.delivered() }
         GreenhouseCommands.register()
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("greenhouse", "tracker")) { graphics, _ ->
-            if (!TrackerHud.isInteractiveScreen(Minecraft.getInstance().screen)) TrackerHud.render(graphics)
+            if (!TrackerHud.isInteractiveScreen(Minecraft.getInstance().currentScreen)) TrackerHud.render(graphics)
         }
         LayoutOverlay.register()
     }

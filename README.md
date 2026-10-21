@@ -4,11 +4,11 @@ Standalone client Fabric mod for Hypixel SkyBlock Greenhouse layouts and harvest
 
 ## Install
 
-Minecraft **26.1 or 26.1.2**, Java **25**, Fabric Loader **0.19.0+**, Fabric API for your Minecraft version, and Fabric Language Kotlin **1.13.13+kotlin.2.4.10 or newer** are required. Use the GreenEssentials JAR matching your Minecraft version. Put the JAR and those dependencies in your instance's `mods` folder.
+Minecraft **26.1, 26.1.2, 26.2, or 26.3**, Java **25**, Fabric Loader **0.19.0+**, Fabric API for your Minecraft version, and Fabric Language Kotlin **1.13.13+kotlin.2.4.10 or newer** are required. Use the GreenEssentials JAR matching your Minecraft version. Put the JAR and those dependencies in your instance's `mods` folder.
 
-Build from this directory with `./gradlew build` (Windows: `.\gradlew.bat build`). The installable JAR is `build/libs/greenessentials-0.1.21-mc26.1.2.jar`; the `-sources.jar` is source code, not the mod to install. Run tests with `./gradlew test`.
+Build from this directory with `./gradlew build` (Windows: `.\gradlew.bat build`). The installable JAR is `build/libs/greenessentials-0.1.22-mc26.1.2.jar`; the `-sources.jar` is source code, not the mod to install. Run tests with `./gradlew test`.
 
-For Minecraft **26.1**, build with `./gradlew build -Pminecraft_version=26.1` (PowerShell: `.\gradlew.bat build '-Pminecraft_version=26.1'`). This produces `build/libs/greenessentials-0.1.21-mc26.1.jar` with metadata requiring 26.1. The default build targets 26.1.2.
+For Minecraft **26.1**, build with `./gradlew build -Pminecraft_version=26.1` (PowerShell: `.\gradlew.bat build '-Pminecraft_version=26.1'`). This produces `build/libs/greenessentials-0.1.22-mc26.1.jar` with metadata requiring 26.1. The default build targets 26.1.2. Build 26.2 or 26.3 with the matching `-Pminecraft_version=26.2` or `-Pminecraft_version=26.3` property. Each JAR requires its exact Minecraft target; use the matching Fabric API. Minecraft 26.3 uses its SDL file picker and link opening, with a separate render hook and access widener.
 
 ## Use
 
@@ -16,7 +16,7 @@ JellyShort is included: remove the separate JellyShort JAR before installing Gre
 
 Crop counts in the HUD and `/ge items` automatically use enchanted and compacted forms, with exact leftovers. Toggle **Profit Tracker > Compact Crops** in `/ge` to show raw counts. This changes display only; stored totals and profit stay unchanged.
 
-Open `/ge`, `/greenessentials`, or `/greenhouse` for the actual MoulConfig settings editor used by SkyHanni, including built-in search, category navigation, toggles, and a HUD scale slider. MoulConfig 4.7.2 is bundled and relocated; no separate UI library download is required. **GUI > Edit GUI Locations** opens a live preview: drag the tracker and scroll to resize (50% to 200%). Done/Escape saves and returns to settings. Reset position & size restores placement and scale only. `/greenhouse hud` opens the editor directly.
+Open `/ge`, `/greenessentials`, or `/greenhouse` for the actual MoulConfig settings editor used by SkyHanni, including built-in search, category navigation, toggles, and a HUD scale slider. MoulConfig 4.7.2 (26.1–26.2) or 4.8.0 (26.3) is bundled and relocated; no separate UI library download is required. **GUI > Edit GUI Locations** opens a live preview: drag the tracker and scroll to resize (50% to 200%). Done/Escape saves and returns to settings. Reset position & size restores placement and scale only. `/greenhouse hud` opens the editor directly.
 
 Open **Schematic layout library**, `/gelayouts`, `/greenhouse layouts`, or `/shgreenhouseblueprint` for the restored SkyHanni layout library: scrolling cards with mini grid previews, setup/buff/unique counts, active indicators, and per-card controls. If your profile isn't visible in the tab list, use `/greenhouse profile <name>`. Profiles are separated by server address, player UUID, and profile name. An undetected profile pauses tracking. World changes clear the detected profile and inventory baseline; automatic detection resumes when the tab list supplies the name, or you can select it again manually.
 

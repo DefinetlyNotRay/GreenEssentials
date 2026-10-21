@@ -170,7 +170,8 @@ public final class JellyShort {
             BlockPos pos = BlockPos.of(packed);
             sections.add(SectionPos.asLong(pos.getX() >> 4, pos.getY() >> 4, pos.getZ() >> 4));
         }
-        var renderer = Minecraft.getInstance().levelRenderer;
+        var renderer = Minecraft.getInstance().level;
+        if (renderer == null) return;
         for (long section : sections) renderer.setSectionDirtyWithNeighbors(
             SectionPos.x(section), SectionPos.y(section), SectionPos.z(section));
     }

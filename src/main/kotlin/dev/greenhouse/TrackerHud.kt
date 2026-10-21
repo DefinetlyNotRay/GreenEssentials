@@ -57,7 +57,7 @@ internal object TrackerHud {
     private fun click(screen: Screen,mouseX: Double,mouseY: Double,button: Int): Boolean {
         if (button != 0 || screen !== renderedScreen || !isInteractiveScreen(screen)) return false
         val client = Minecraft.getInstance()
-        if (client.screen !== screen || client.level == null || client.options.hideGui || !Storage.settings.enabled || !inGreenhouse()) return false
+        if (client.currentScreen !== screen || client.level == null || client.guiHidden || !Storage.settings.enabled || !inGreenhouse()) return false
         val hit = buttons.lastOrNull { it.contains(mouseX / Storage.settings.hudScale,mouseY / Storage.settings.hudScale) } ?: return false
         capturedPress = true
         when (hit.action) {
@@ -75,10 +75,10 @@ internal object TrackerHud {
     fun render(graphics: GuiGraphicsExtractor,mouseX: Int = -1,mouseY: Int = -1,screen: Screen? = null, preview: Boolean = false) {
         val client = Minecraft.getInstance()
         buttons = emptyList(); renderedScreen = null; bounds = null
-        if (!preview && (client.level == null || client.options.hideGui || !Storage.settings.enabled || !inGreenhouse())) {
+        if (!preview && (client.level == null || client.guiHidden || !Storage.settings.enabled || !inGreenhouse())) {
             confirmation.clear(); return
         }
-        val interactive = screen != null && isInteractiveScreen(screen) && client.screen === screen
+        val interactive = screen != null && isInteractiveScreen(screen) && client.currentScreen === screen
         if (!interactive) confirmation.clear()
         val profile = Storage.profile
         val totals = Tracker.view()
