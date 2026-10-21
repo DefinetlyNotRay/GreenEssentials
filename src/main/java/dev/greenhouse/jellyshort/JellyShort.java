@@ -32,24 +32,21 @@ public final class JellyShort {
     // Immutable snapshots are also read by asynchronous chunk mesh builders.
     private static volatile Set<Long> hiddenBlocks = Set.of();
     private static String mode = "shorten";
-    private static boolean automatic = true;
     private static int height = 2;
     private static Object lastLevel;
     private static int ticks;
 
-    public record Configuration(String mode, boolean automatic, int height) {}
+    public record Configuration(String mode, int height) {}
     private static java.util.function.Consumer<Configuration> configChanged = config -> {};
 
-    public static Configuration configuration() { return new Configuration(mode, automatic, height); }
-    public static void configure(String nextMode, boolean nextAutomatic, int nextHeight,
+    public static Configuration configuration() { return new Configuration(mode, height); }
+    public static void configure(String nextMode, int nextHeight,
         java.util.function.Consumer<Configuration> listener) {
         mode = Set.of("shorten", "hide", "off").contains(nextMode) ? nextMode : "shorten";
-        automatic = nextAutomatic;
         height = Math.clamp(nextHeight, 1, 8);
         configChanged = listener;
         refresh();
     }
-    public static void setAutomatic(boolean value) { automatic = value; changed(); }
     public static void setHeight(int value) { height = Math.clamp(value, 1, 8); changed(); }
     private static void changed() { refresh(); configChanged.accept(configuration()); }
 
@@ -67,14 +64,13 @@ public final class JellyShort {
     }
 
     public static LiteralArgumentBuilder<FabricClientCommandSource> command(String root) {
-        return literal(root).executes(ctx -> say("Full-height Jellybeans are detected automatically. Modes: shorten, hide, off. Other commands: auto, height 1-8, inspect, mark, unmark, clear."))
+        return literal(root).executes(ctx -> say("Full-height Jellybeans are detected automatically. Modes: shorten, hide, off. Other commands: height 1-8, inspect, mark, unmark, clear."))
             .then(literal("mark").executes(ctx -> mark(false)))
             .then(literal("unmark").executes(ctx -> mark(true)))
             .then(literal("clear").executes(ctx -> { plants.clear(); refresh(); return say("Cleared marked plants."); }))
             .then(literal("shorten").executes(ctx -> setMode("shorten")))
             .then(literal("hide").executes(ctx -> setMode("hide")))
             .then(literal("off").executes(ctx -> setMode("off")))
-            .then(literal("auto").executes(ctx -> { setAutomatic(!automatic); return say("Automatic full-height detection: " + automatic); }))
             .then(literal("height").then(argument("blocks", IntegerArgumentType.integer(1, 8)).executes(ctx -> {
                 setHeight(IntegerArgumentType.getInteger(ctx, "blocks")); return say("Visible height: " + height + " blocks.");
             })))
@@ -123,25 +119,23 @@ public final class JellyShort {
         var level = Minecraft.getInstance().level;
         if (level == null || mode.equals("off")) { updateHiddenBlocks(Set.of()); return; }
         List<Plant> caneColumns = new ArrayList<>();
-        if (automatic) {
-            List<JellybeanFilter.Piece> pieces = new ArrayList<>();
-            for (Entity entity : level.entitiesForRendering()) {
-                if (entity instanceof ArmorStand stand && JellybeanFilter.matchesName(
-                    stand.getItemBySlot(EquipmentSlot.HEAD).getHoverName().getString())) {
-                    pieces.add(new JellybeanFilter.Piece(entity.getId(), entity.getX(), entity.getY(), entity.getZ()));
-                }
+        List<JellybeanFilter.Piece> pieces = new ArrayList<>();
+        for (Entity entity : level.entitiesForRendering()) {
+            if (entity instanceof ArmorStand stand && JellybeanFilter.matchesName(
+                stand.getItemBySlot(EquipmentSlot.HEAD).getHoverName().getString())) {
+                pieces.add(new JellybeanFilter.Piece(entity.getId(), entity.getX(), entity.getY(), entity.getZ()));
             }
-            Set<Integer> fullPlantIds = JellybeanFilter.select(pieces, 0, true);
-            hidden.addAll(JellybeanFilter.select(pieces, height, mode.equals("hide")));
-            java.util.Map<Long, Plant> columns = new java.util.HashMap<>();
-            for (var piece : pieces) {
-                if (!fullPlantIds.contains(piece.id())) continue;
-                long key = BlockPos.asLong((int)Math.floor(piece.x()), 0, (int)Math.floor(piece.z()));
-                Plant previous = columns.get(key);
-                if (previous == null || piece.y() < previous.y) columns.put(key, new Plant(piece.x(), piece.y(), piece.z()));
-            }
-            caneColumns.addAll(columns.values());
         }
+        Set<Integer> fullPlantIds = JellybeanFilter.select(pieces, 0, true);
+        hidden.addAll(JellybeanFilter.select(pieces, height, mode.equals("hide")));
+        java.util.Map<Long, Plant> columns = new java.util.HashMap<>();
+        for (var piece : pieces) {
+            if (!fullPlantIds.contains(piece.id())) continue;
+            long key = BlockPos.asLong((int)Math.floor(piece.x()), 0, (int)Math.floor(piece.z()));
+            Plant previous = columns.get(key);
+            if (previous == null || piece.y() < previous.y) columns.put(key, new Plant(piece.x(), piece.y(), piece.z()));
+        }
+        caneColumns.addAll(columns.values());
         for (Entity entity : level.entitiesForRendering()) {
             if (!modelPiece(entity)) continue;
             for (Plant plant : plants) {

@@ -15,10 +15,9 @@ class GreenhouseClient : ClientModInitializer {
         HarvestSignals.register()
         Storage.load()
         dev.greenhouse.jellyshort.JellyShort.configure(
-            Storage.settings.jellyShortMode, Storage.settings.jellyShortAutomatic, Storage.settings.jellyShortHeight,
+            Storage.settings.jellyShortMode, Storage.settings.jellyShortHeight,
         ) { config ->
             Storage.settings.jellyShortMode = config.mode()
-            Storage.settings.jellyShortAutomatic = config.automatic()
             Storage.settings.jellyShortHeight = config.height()
             Storage.save()
         }

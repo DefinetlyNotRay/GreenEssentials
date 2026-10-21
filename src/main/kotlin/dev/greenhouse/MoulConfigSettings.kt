@@ -140,10 +140,6 @@ class JellyShortOptions {
     val mode = setting(listOf("shorten", "hide", "off").indexOf(Storage.settings.jellyShortMode).coerceAtLeast(0)) {
         dev.greenhouse.jellyshort.JellyShort.setMode(listOf("shorten", "hide", "off")[it])
     }
-    @JvmField @Expose @ConfigOption(name="Automatic Detection",desc="Detect Jellybean heads with all ten vertical model tiers. Partial models stay visible. This is not growth-stage detection.")
-    @ConfigEditorBoolean val automatic = setting(Storage.settings.jellyShortAutomatic) {
-        dev.greenhouse.jellyshort.JellyShort.setAutomatic(it)
-    }
     @JvmField @Expose @ConfigOption(name="Visible Height",desc="Number of bottom tiers to retain when shortening. Manual marks and inspection are available through /jellyshort.")
     @ConfigEditorSlider(minValue=1f,maxValue=8f,minStep=1f)
     val height = setting(Storage.settings.jellyShortHeight.toFloat()) {
