@@ -74,10 +74,10 @@ internal class HarvestAttribution(
 
     fun active(): Boolean = inventoryGate.active(clock())
 
-    fun clearEvidence(reason: String) {
+    fun clearEvidence(reason: String, preserveDelayedSacks: Boolean = false) {
         inventoryGate.clear()
-        sackGate.clear()
-        note("evidence_cleared", reason = reason)
+        if (!preserveDelayedSacks) sackGate.clear()
+        note(if (preserveDelayedSacks) "inventory_evidence_cleared" else "evidence_cleared", reason = reason)
     }
 
     fun snapshot(items: Map<String, Long>, eligible: Boolean) {
@@ -97,7 +97,7 @@ internal class HarvestAttribution(
         items.forEach { (id, count) ->
             decision(ledger.sack(id, count) { sackGate.allows(it, clock()) })
         }
-        sackGate.clear()
+        sackGate.consume(items.keys.map { Catalog.units[it]?.base ?: it }.toSet())
         ledger.finishSackReport()
     }
 

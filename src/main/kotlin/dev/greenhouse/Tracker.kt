@@ -35,7 +35,7 @@ internal object Tracker {
     fun returnedMutation(id: String) = attribution.returned(id)
     fun confirmedHarvest(id: String) = attribution.harvested(id)
     fun activeHarvest(): Boolean = attribution.active()
-    fun clearHarvestEvidence(reason: String) = attribution.clearEvidence(reason)
+    fun clearHarvestEvidence(reason: String) = attribution.clearEvidence(reason, preserveDelayedSacks = true)
     fun trace(event: String, item: String? = null, reason: String? = null) = attribution.note(event, item, reason)
     fun diagnostics(): Pair<List<AttributionEvent>, Long> = journal.snapshot() to journal.droppedEvents
     fun resetRuntime(reason: String = "user_or_context_reset") { HarvestSignals.reset(); attribution.reset(reason); lastEligible = false; seenDeaths.clear(); Layouts.clear() }
@@ -103,10 +103,11 @@ internal object Tracker {
         Regex("(?:You are playing on profile: |Your profile was changed to: |You switched to profile )([A-Za-z]+)", RegexOption.IGNORE_CASE).find(text)?.let {
             flush(); profileName = it.groupValues[1].lowercase(); updateScope(); resetRuntime()
         }
-        if (!Storage.settings.enabled || Storage.profile == null || currentPlot() == null) {
-            if (text.startsWith("[Sacks]")) trace("sack_report_rejected", reason = "disabled_or_outside_profile_plot")
+        if (!Storage.settings.enabled || Storage.profile == null) {
+            if (text.startsWith("[Sacks]")) trace("sack_report_rejected", reason = "disabled_or_no_profile")
             return
         }
+        if (currentPlot() == null && !text.startsWith("[Sacks]")) return
         if (Minecraft.getInstance().currentScreen == null) {
             val patterns = listOf(
                 Regex("You caught(?: [an]+)?(?: x\\d+)? (Timestalk Clone|Zombuddy) Shards?!"),
@@ -122,10 +123,8 @@ internal object Tracker {
             Prices.idForName(match.groupValues[2])?.let { attribution.exclude(it, match.groupValues[1].replace(",", "").toLong()) }
         }
         if (!text.startsWith("[Sacks]")) return
-        if (Minecraft.getInstance().currentScreen != null || !lastEligible) {
-            trace("sack_report_rejected", reason = if (Minecraft.getInstance().currentScreen != null) "screen_open" else "context_ineligible")
-            return
-        }
+        // Sack reports describe earlier gains. The per-item harvest gate, not the current
+        // screen/plot, determines whether a delayed report belongs to this profile's harvest.
         val hovers = linkedSetOf<String>()
         fun visit(component: Component) {
             val hover = component.style.hoverEvent

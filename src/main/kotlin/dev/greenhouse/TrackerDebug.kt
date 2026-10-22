@@ -4,7 +4,7 @@ import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import java.nio.file.Files
 
-/** Only an explicit command writes diagnostics to disk or the clipboard. */
+/** Explicit export copies diagnostics; the last bounded journal also survives a normal shutdown. */
 internal object TrackerDebug {
     fun version(): String {
         val loader = FabricLoader.getInstance()
@@ -13,7 +13,7 @@ internal object TrackerDebug {
         return "GreenEssentials $mod / Minecraft $minecraft"
     }
 
-    fun export() {
+    private fun report(): String {
         val (events, dropped) = Tracker.diagnostics()
         val report = mapOf(
             "format" to 1,
@@ -25,7 +25,18 @@ internal object TrackerDebug {
             "droppedEvents" to dropped,
             "events" to events,
         )
-        val text = Json.gson.toJson(report)
+        return Json.gson.toJson(report)
+    }
+
+    fun saveOnShutdown() {
+        runCatching {
+            Files.createDirectories(Storage.directory)
+            Files.writeString(Storage.directory.resolve("tracker-last-session.json"),report())
+        }.onFailure { org.slf4j.LoggerFactory.getLogger("GreenEssentials").warn("Could not save tracker diagnostics",it) }
+    }
+
+    fun export() {
+        val text = report()
         Files.createDirectories(Storage.directory)
         Files.writeString(Storage.directory.resolve("tracker-debug.json"), text)
         Minecraft.getInstance().keyboardHandler.clipboard = text

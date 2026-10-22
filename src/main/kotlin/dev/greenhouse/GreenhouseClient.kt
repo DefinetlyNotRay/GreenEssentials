@@ -24,7 +24,7 @@ class GreenhouseClient : ClientModInitializer {
         dev.greenhouse.jellyshort.JellyShort.initialize()
         TrackerHud.registerControls()
         ClientTickEvents.END_CLIENT_TICK.register { Tracker.tick() }
-        ClientLifecycleEvents.CLIENT_STOPPING.register { Tracker.flush(); Storage.save() }
+        ClientLifecycleEvents.CLIENT_STOPPING.register { Tracker.flush(); Storage.save(); TrackerDebug.saveOnShutdown() }
         // Read the original hover before chat modifiers change it; cancellation must not hide harvest data.
         val messages = IncomingMessageObserver<Component>(Tracker::chat)
         ClientReceiveMessageEvents.ALLOW_GAME.register { message, overlay ->
