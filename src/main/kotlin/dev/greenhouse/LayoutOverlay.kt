@@ -48,7 +48,9 @@ internal object LayoutOverlay {
                 GhostGeometry.head(missing.cropId.uppercase(),stack,ctx.submitNodeCollector())
                 stack.popPose()
                 stack.translate(size/2, 1.0, size/2); rotateLabel(stack,camera.orientation); stack.scale(0.018f,-0.018f,0.018f)
-                val text = Component.literal(missing.cropId.replace('_',' '))
+                val name = GreenhouseMutation.fromSkyShardsId(missing.cropId)?.displayName
+                    ?: missing.cropId.replace('_',' ').split(' ').joinToString(" ") { it.replaceFirstChar(Char::uppercaseChar) }
+                val text = Component.literal(name)
                 ctx.submitNodeCollector().submitText(stack, -Minecraft.getInstance().font.width(text)/2f, 0f, text.visualOrderText,
                     false, Font.DisplayMode.NORMAL, 15728880, -1, 0x88000000.toInt(), 0)
                 stack.popPose()
