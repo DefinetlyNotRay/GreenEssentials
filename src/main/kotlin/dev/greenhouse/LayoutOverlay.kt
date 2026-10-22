@@ -11,6 +11,7 @@ internal object LayoutOverlay {
     fun register() {
         LevelRenderEvents.COLLECT_SUBMITS.register { ctx ->
             if (!inGreenhouse() || !Storage.settings.overlay) return@register
+            val level = Minecraft.getInstance().level ?: return@register
             val camera = ctx.levelState().cameraRenderState
             val stack = ctx.poseStack()
             Layouts.missingSurfaces.forEach { missing ->
@@ -36,7 +37,13 @@ internal object LayoutOverlay {
                     }
                 }
                 stack.pushPose()
-                stack.translate(size/2,0.15,size/2)
+                val supportPosition = net.minecraft.core.BlockPos.containing(position.x+size/2,position.y-1,position.z+size/2)
+                val support = Layouts.missingSurfaces.firstOrNull { it.position.toBlockPos() == supportPosition }
+                    ?.let { SurfaceBlocks.state(it.surface) } ?: level.getBlockState(supportPosition)
+                val shape = support.getShape(level,supportPosition)
+                val supportTop = if (shape.isEmpty) 1.0 else shape.max(net.minecraft.core.Direction.Axis.Y)
+                // Skull geometry starts at its local origin; align it with the actual/preview soil top.
+                stack.translate(size/2,supportTop-1.0,size/2)
                 stack.scale(1.2f,-1.2f,-1.2f)
                 GhostGeometry.head(missing.cropId.uppercase(),stack,ctx.submitNodeCollector())
                 stack.popPose()

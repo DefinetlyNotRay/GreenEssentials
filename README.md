@@ -6,9 +6,9 @@ Standalone client Fabric mod for Hypixel SkyBlock Greenhouse layouts and harvest
 
 Minecraft **26.1, 26.1.2, 26.2, or 26.3**, Java **25**, Fabric Loader **0.19.0+**, Fabric API for your Minecraft version, and Fabric Language Kotlin **1.13.13+kotlin.2.4.10 or newer** are required. Use the GreenEssentials JAR matching your Minecraft version. Put the JAR and those dependencies in your instance's `mods` folder.
 
-Build from this directory with `./gradlew build` (Windows: `.\gradlew.bat build`). The installable JAR is `build/libs/greenessentials-0.1.23-mc26.1.2.jar`; the `-sources.jar` is source code, not the mod to install. Run tests with `./gradlew test`.
+Build from this directory with `./gradlew build` (Windows: `.\gradlew.bat build`). The installable JAR is `build/libs/greenessentials-0.1.24-mc26.1.2.jar`; the `-sources.jar` is source code, not the mod to install. Run tests with `./gradlew test`.
 
-For Minecraft **26.1**, build with `./gradlew build -Pminecraft_version=26.1` (PowerShell: `.\gradlew.bat build '-Pminecraft_version=26.1'`). This produces `build/libs/greenessentials-0.1.23-mc26.1.jar` with metadata requiring 26.1. The default build targets 26.1.2. Build 26.2 or 26.3 with the matching `-Pminecraft_version=26.2` or `-Pminecraft_version=26.3` property. Each JAR requires its exact Minecraft target; use the matching Fabric API. Minecraft 26.3 uses its SDL file picker and link opening, with a separate render hook and access widener.
+For Minecraft **26.1**, build with `./gradlew build -Pminecraft_version=26.1` (PowerShell: `.\gradlew.bat build '-Pminecraft_version=26.1'`). This produces `build/libs/greenessentials-0.1.24-mc26.1.jar` with metadata requiring 26.1. The default build targets 26.1.2. Build 26.2 or 26.3 with the matching `-Pminecraft_version=26.2` or `-Pminecraft_version=26.3` property. Each JAR requires its exact Minecraft target; use the matching Fabric API. Minecraft 26.3 uses its SDL file picker and link opening, with a separate render hook and access widener.
 
 ## Use
 

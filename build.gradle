@@ -3,7 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.4.10'
     id 'com.gradleup.shadow' version '9.6.0'
 }
-version = '0.1.23'
+version = '0.1.24'
 group = 'dev.greenhouse'
 repositories { mavenLocal(); maven { url = 'https://maven.notenoughupdates.org/releases/' }; mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
 def mc = providers.gradleProperty('minecraft_version').getOrElse('26.1.2')
