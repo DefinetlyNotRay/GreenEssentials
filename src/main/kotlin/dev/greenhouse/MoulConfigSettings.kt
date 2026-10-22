@@ -74,7 +74,7 @@ class AboutOptions {
 private fun sourceLink(url: String) = Runnable { openExternalLink(url) }
 
 class UsedSoftwareOptions {
-    @JvmField @ConfigOption(name="Mutation crop data",desc="Crop drop identities checked against Hypixel SkyBlock Wiki mutation pages. Each entry records its source page and revision.")
+    @JvmField @ConfigOption(name="Mutation data",desc="Crop drop identities and spawning surfaces checked against Hypixel SkyBlock Wiki mutation pages. Drop entries record their source page and revision.")
     @ConfigEditorButton(buttonText="Source")
     val mutationData = sourceLink("https://hypixelskyblock.minecraft.wiki/w/Mutations")
 

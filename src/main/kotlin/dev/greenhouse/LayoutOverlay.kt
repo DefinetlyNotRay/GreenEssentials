@@ -13,6 +13,15 @@ internal object LayoutOverlay {
             if (!inGreenhouse() || !Storage.settings.overlay) return@register
             val camera = ctx.levelState().cameraRenderState
             val stack = ctx.poseStack()
+            Layouts.missingSurfaces.forEach { missing ->
+                val position = missing.position
+                stack.pushPose()
+                // A slight expansion also makes wrong existing soil visible as a replacement ghost.
+                stack.translate(position.x-camera.pos.x-0.002,position.y-camera.pos.y-0.002,position.z-camera.pos.z-0.002)
+                stack.scale(1.004f,1.004f,1.004f)
+                GhostGeometry.block(missing.surface,stack,ctx.submitNodeCollector())
+                stack.popPose()
+            }
             Layouts.missing.forEach { missing ->
                 val position = missing.position
                 val x = position.x-camera.pos.x; val y = position.y-camera.pos.y; val z = position.z-camera.pos.z
@@ -26,14 +35,11 @@ internal object LayoutOverlay {
                         face.forEach { index -> val c = corners[index]; vertices.addVertex(pose, c[0].toFloat(),c[1].toFloat(),c[2].toFloat()).setColor(80,230,140,75) }
                     }
                 }
-                MutationAssets.stack(missing.cropId.uppercase())?.let { item ->
-                    val client = Minecraft.getInstance()
-                    val state = net.minecraft.client.renderer.item.ItemStackRenderState()
-                    client.itemModelResolver.updateForTopItem(state,item,net.minecraft.world.item.ItemDisplayContext.FIXED,client.level,null,0)
-                    stack.pushPose(); stack.translate(size/2,0.55,size/2); stack.scale(1.2f,1.2f,1.2f)
-                    state.submit(stack,ctx.submitNodeCollector(),15728880,net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,0)
-                    stack.popPose()
-                }
+                stack.pushPose()
+                stack.translate(size/2,0.15,size/2)
+                stack.scale(1.2f,-1.2f,-1.2f)
+                GhostGeometry.head(missing.cropId.uppercase(),stack,ctx.submitNodeCollector())
+                stack.popPose()
                 stack.translate(size/2, 1.0, size/2); rotateLabel(stack,camera.orientation); stack.scale(0.018f,-0.018f,0.018f)
                 val text = Component.literal(missing.cropId.replace('_',' '))
                 ctx.submitNodeCollector().submitText(stack, -Minecraft.getInstance().font.width(text)/2f, 0f, text.visualOrderText,

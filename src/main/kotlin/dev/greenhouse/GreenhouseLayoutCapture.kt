@@ -25,6 +25,21 @@ internal object GreenhouseLayoutCapture {
         GreenhouseGridScanner.scanCropCells(plot, mutations).forEach { cell ->
             add(GreenHouseStorage.BlueprintCellStorage(cell.cropId, cell.row, cell.column))
         }
+        val level = net.minecraft.client.Minecraft.getInstance().level
+        if (level != null) {
+            val occupied = buildSet {
+                this@buildList.toList().forEach { cell ->
+                    val size = GreenhouseMutation.fromSkyShardsId(cell.cropId)?.size ?: 1
+                    repeat(size) { row -> repeat(size) { column -> add(cell.row+row to cell.column+column) } }
+                }
+            }
+            occupied.filter { it.first in 0..9 && it.second in 0..9 }.forEach { (row,column) ->
+                val position = net.minecraft.core.BlockPos(middle.x+column-5,73,middle.z+row-5)
+                SurfaceBlocks.surface(level.getBlockState(position))?.let { surface ->
+                    add(GreenHouseStorage.BlueprintCellStorage(surface.id,row,column))
+                }
+            }
+        }
     }
 
     private const val GRID_RADIUS = GreenhouseGridScanner.GRID_RADIUS

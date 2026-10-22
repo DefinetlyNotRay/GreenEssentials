@@ -9,6 +9,10 @@ internal object Layouts {
     var missing: List<Missing> = emptyList()
         private set
     private var previous: List<Missing> = emptyList()
+    data class MissingSurface(val surface: SpawningSurfaces.Surface, val position: LorenzVec)
+    var missingSurfaces: List<MissingSurface> = emptyList()
+        private set
+    private var previousSurfaces: List<MissingSurface> = emptyList()
     val all get() = Storage.profile?.layouts.orEmpty()
     fun active(): GreenHouseStorage.MutationBlueprintStorage? = currentPlot()?.let { plot ->
         Storage.profile?.active?.get(plot.id)?.let(all::get)
@@ -130,11 +134,19 @@ internal object Layouts {
             GreenhouseLayoutAnalysis.Entry(it.mutationId.lowercase(), size * size)
         })
     }
-    fun clear() { missing = emptyList(); previous = emptyList() }
+    fun clear() { missing = emptyList(); previous = emptyList(); missingSurfaces = emptyList(); previousSurfaces = emptyList() }
     fun refresh() {
         val plot = currentPlot() ?: run { clear(); return }
         val blueprint = active() ?: run { clear(); return }
         if (!Storage.settings.overlay || !GreenhouseGridScanner.isLoaded(plot)) { clear(); return }
+        val level = Minecraft.getInstance().level ?: run { clear(); return }
+        val surfaces = SpawningSurfaces.expected(blueprint,plot.middle).mapNotNull { cell ->
+            val position = LorenzVec(plot.middle.toBlockPos().x + cell.column - 5.0,73.0,plot.middle.toBlockPos().z + cell.row - 5.0)
+            val actual = SurfaceBlocks.surface(level.getBlockState(position.toBlockPos()))
+            if (SpawningSurfaces.accepts(cell,actual)) null else MissingSurface(cell.surface,position)
+        }
+        missingSurfaces = if (surfaces == previousSurfaces) surfaces else emptyList()
+        previousSurfaces = surfaces
         val live = GreenhouseMutationScanner.scan(GreenhouseGridScanner.area(plot)).toMutableList()
         val target = target(blueprint)
         val next = buildList {

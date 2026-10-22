@@ -253,7 +253,7 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
         }
         if (blueprint.importedCells.isNotEmpty()) {
             val target = LibraryActions.targetMutation(blueprint)
-            blueprint.importedCells.forEach { placement ->
+            blueprint.importedCells.sortedBy { if (SpawningSurfaces.Surface.fromId(it.cropId) != null) 0 else 1 }.forEach { placement ->
                 val size = GreenhouseMutation.fromSkyShardsId(placement.cropId)?.size ?: 1
                 val role = GreenhouseLayoutAnalysis.roleFor(
                     GreenhouseLayoutAnalysis.Entry(placement.cropId, size * size, placement.target),

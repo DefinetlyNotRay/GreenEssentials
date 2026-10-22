@@ -16,25 +16,38 @@ internal object SkyMutationsLayoutCodec {
         require(entries.size() <= GRID_CELLS) { "The SkyMutations layout contains too many entries." }
 
         val occupied = mutableSetOf<Pair<Int, Int>>()
-        return SkyShardsLayoutCodec.Layout(
-            entries.map { element ->
-                val entry = element.asJsonArray
-                require(entry.size() >= 4) { "A SkyMutations layout entry is incomplete." }
-                val sourceX = entry[0].asInt
-                val row = entry[1].asInt
-                require(sourceX in 0 until GRID_SIZE && row in 0 until GRID_SIZE) {
-                    "A SkyMutations placement is outside the Greenhouse grid."
+        val placements = entries.map { element ->
+            val entry = element.asJsonArray
+            require(entry.size() >= 4) { "A SkyMutations layout entry is incomplete." }
+            val sourceX = entry[0].asInt
+            val row = entry[1].asInt
+            require(sourceX in 0 until GRID_SIZE && row in 0 until GRID_SIZE) {
+                "A SkyMutations placement is outside the Greenhouse grid."
+            }
+            val column = GRID_SIZE - 1 - sourceX
+            require(occupied.add(row to column)) { "The SkyMutations layout contains duplicate placements." }
+            SkyShardsLayoutCodec.Placement(
+                cropId = normalizeId(entry[2].asString),
+                row = row,
+                column = column,
+                target = entry[3].asInt == 0,
+            )
+        }
+        // This format repeats a large mutation in every covered cell, including output targets.
+        val byCell = placements.associateBy { it.row to it.column }
+        val consumed = mutableSetOf<Pair<Int,Int>>()
+        return SkyShardsLayoutCodec.Layout(placements.sortedWith(compareBy({ it.row },{ it.column })).filter { placement ->
+            if (placement.row to placement.column in consumed) return@filter false
+            val size = GreenhouseMutation.fromSkyShardsId(placement.cropId)?.size ?: 1
+            repeat(size) { row -> repeat(size) { column ->
+                val key = placement.row+row to placement.column+column
+                val cell = byCell[key]
+                require(cell?.cropId == placement.cropId && cell.target == placement.target && consumed.add(key)) {
+                    "The SkyMutations layout contains an incomplete or overlapping mutation footprint."
                 }
-                val column = GRID_SIZE - 1 - sourceX
-                require(occupied.add(row to column)) { "The SkyMutations layout contains duplicate placements." }
-                SkyShardsLayoutCodec.Placement(
-                    cropId = normalizeId(entry[2].asString),
-                    row = row,
-                    column = column,
-                    target = entry[3].asInt == 0,
-                )
-            },
-        )
+            } }
+            true
+        })
     }
 
     private fun extractCode(input: String): String {

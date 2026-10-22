@@ -55,8 +55,8 @@ internal object GreenhouseBlueprintFile {
         val blueprint = requireNotNull(portable.blueprint) { "The layout file does not contain a layout." }
         require(blueprint.mutations.size <= MAX_GRID_ENTRIES) { "The layout contains too many mutations." }
         // Capture can detect an independent crop head underneath a mutation in the same cell.
-        // The two layers each have at most one entry per grid coordinate.
-        require(blueprint.importedCells.size <= MAX_GRID_ENTRIES * 2) { "The layout contains too many grid entries." }
+        // Crop, mutation, and surface layers each have at most one entry per grid coordinate.
+        require(blueprint.importedCells.size <= MAX_GRID_ENTRIES * 3) { "The layout contains too many grid entries." }
         require(blueprint.mutations.isNotEmpty() || blueprint.importedCells.isNotEmpty()) { "The layout is empty." }
         val occupiedMutationCells = mutableSetOf<Pair<Int, Int>>()
         blueprint.mutations.forEach { placement ->
@@ -89,15 +89,19 @@ internal object GreenhouseBlueprintFile {
             placement.texture = ""
             placement.size = mutation.size
         }
-        val occupiedCropCells = mutableSetOf<Triple<Int, Int, Boolean>>()
+        val occupiedCropCells = mutableSetOf<Triple<Int, Int, Int>>()
         blueprint.importedCells.forEach { cell ->
             require(cell.cropId.length in 1..MAX_CROP_ID_LENGTH) { "Invalid crop ID." }
             require(cell.row in 0 until GRID_SIZE && cell.column in 0 until GRID_SIZE) {
                 "A crop is outside the Greenhouse grid."
             }
-            val mutationLayer = GreenhouseMutation.fromSkyShardsId(cell.cropId) != null
-            require(occupiedCropCells.add(Triple(cell.row,cell.column,mutationLayer))) {
-                "The layout contains duplicate ${if (mutationLayer) "mutation" else "crop"} entries in row ${cell.row+1}, column ${cell.column+1}."
+            val layer = when {
+                SpawningSurfaces.Surface.fromId(cell.cropId) != null -> 2
+                GreenhouseMutation.fromSkyShardsId(cell.cropId) != null -> 1
+                else -> 0
+            }
+            require(occupiedCropCells.add(Triple(cell.row,cell.column,layer))) {
+                "The layout contains duplicate ${if (layer == 2) "surface" else if (layer == 1) "mutation" else "crop"} entries in row ${cell.row+1}, column ${cell.column+1}."
             }
         }
         require(
