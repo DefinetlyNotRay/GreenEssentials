@@ -4,11 +4,11 @@ A client-side Fabric mod for Hypixel SkyBlock's Greenhouse.
 
 ## Features
 
-- **Layout library** — capture, import, export, rotate, and preview Greenhouse layouts, with overlays for missing plants and spawning surfaces.
-- **Harvest tracker** — item breakdowns, estimated profit, farming time, and separate Session and All-time totals for each profile.
-- **Customizable HUD** — move and resize the tracker, toggle item icons, and display crops in compacted forms.
-- **JellyShort** — shorten or hide tall plant models while keeping their hitboxes.
-- **Layout sharing** — supports SkyShards, SkyMutations, and SkyLayouts links, plus portable SkyHanni layout files.
+- **Layout library** : capture, import, export, rotate, and preview Greenhouse layouts, with overlays for missing plants and spawning surfaces.
+- **Harvest tracker** : item breakdowns, estimated profit, farming time, and separate Session and All-time totals for each profile.
+- **Customizable HUD** : move and resize the tracker, toggle item icons, and display crops in compacted forms.
+- **JellyShort** : shorten or hide jellybean sugar cane model while keeping their hitboxes.
+- **Layout sharing** : supports SkyShards, SkyMutations, and SkyLayouts links, plus portable layout files.
 
 ## Commands
 
