@@ -12,7 +12,9 @@ internal class HarvestGate(private val windowMillis: Long = HarvestTiming.INVENT
 
     fun active(now: Long): Boolean = expires.values.any { now <= it }
 
-    fun consume(items: Set<String>) { items.forEach(expires::remove) }
+    fun consume(items: Set<String>) {
+        items.forEach(expires::remove)
+    }
 
     fun clear() = expires.clear()
 }

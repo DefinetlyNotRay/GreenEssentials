@@ -28,14 +28,14 @@ internal object GhostGeometry {
         val skin = client.playerSkinRenderCache().getOrDefault(profile).playerSkin().body().texturePath()
         if (entityModels !== client.entityModels) {
             entityModels = client.entityModels
-            headModel = SkullBlockRenderer.createModel(client.entityModels,SkullBlock.Types.PLAYER)
+            headModel = SkullBlockRenderer.createModel(client.entityModels, SkullBlock.Types.PLAYER)
         }
         val model = headModel ?: return
-        collector.submitCustomGeometry(stack,RenderTypes.entityTranslucent(skin)) { pose,vertices ->
+        collector.submitCustomGeometry(stack, RenderTypes.entityTranslucent(skin)) { pose, vertices ->
             val local = PoseStack()
             local.last().set(pose)
             model.setupAnim(SkullModelBase.State())
-            model.renderToBuffer(local,vertices,15728880,OverlayTexture.NO_OVERLAY,HEAD_COLOR)
+            model.renderToBuffer(local, vertices, 15728880, OverlayTexture.NO_OVERLAY, HEAD_COLOR)
         }
     }
 
@@ -43,16 +43,18 @@ internal object GhostGeometry {
         val client = Minecraft.getInstance()
         val model = client.modelManager.blockStateModelSet.get(SurfaceBlocks.state(surface))
         val parts = mutableListOf<BlockStateModelPart>()
-        model.collectParts(RandomSource.create(0L),parts)
+        model.collectParts(RandomSource.create(0L), parts)
         val quads = parts.flatMap { part -> Direction.entries.flatMap { part.getQuads(it) } + part.getQuads(null) }
-        quads.groupBy { it.materialInfo().sprite().atlasLocation() }.forEach { (atlas,group) ->
-            collector.submitCustomGeometry(stack,RenderTypes.entityTranslucent(atlas)) { pose,vertices ->
-                val instance = QuadInstance()
-                instance.setColor(BLOCK_COLOR)
-                instance.setLightCoords(15728880)
-                instance.setOverlayCoords(OverlayTexture.NO_OVERLAY)
-                group.forEach { vertices.putBakedQuad(pose,it,instance) }
+        quads
+            .groupBy { it.materialInfo().sprite().atlasLocation() }
+            .forEach { (atlas, group) ->
+                collector.submitCustomGeometry(stack, RenderTypes.entityTranslucent(atlas)) { pose, vertices ->
+                    val instance = QuadInstance()
+                    instance.setColor(BLOCK_COLOR)
+                    instance.setLightCoords(15728880)
+                    instance.setOverlayCoords(OverlayTexture.NO_OVERLAY)
+                    group.forEach { vertices.putBakedQuad(pose, it, instance) }
+                }
             }
-        }
     }
 }

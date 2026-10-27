@@ -24,6 +24,7 @@ internal class HarvestLedger(private val admit: (String) -> Boolean = { false })
     private val exclusions = mutableMapOf<String, Long>()
 
     private data class Credit(val id: String, var count: Long, val sack: Boolean, val expires: Long)
+
     private data class Returned(val id: String, var inventory: Long, var sacks: Long, val expires: Long)
 
     private val credits = mutableListOf<Credit>()
@@ -39,12 +40,14 @@ internal class HarvestLedger(private val admit: (String) -> Boolean = { false })
 
     private fun removeReturns(id: String, count: Long, sack: Boolean): Long {
         var remaining = count
-        returned.filter { it.id == id }.forEach { credit ->
-            val available = if (sack) credit.sacks else credit.inventory
-            val used = minOf(remaining, available)
-            if (sack) credit.sacks -= used else credit.inventory -= used
-            remaining -= used
-        }
+        returned
+            .filter { it.id == id }
+            .forEach { credit ->
+                val available = if (sack) credit.sacks else credit.inventory
+                val used = minOf(remaining, available)
+                if (sack) credit.sacks -= used else credit.inventory -= used
+                remaining -= used
+            }
         return remaining
     }
 
@@ -67,8 +70,7 @@ internal class HarvestLedger(private val admit: (String) -> Boolean = { false })
     }
 
     fun sack(id: String, count: Long, admission: (String) -> Boolean = admit): GainDecision {
-        val unit = Catalog.units[id]
-            ?: return GainDecision("sack", id, count, 0, GainReason.UNSUPPORTED_ITEM)
+        val unit = Catalog.units[id] ?: return GainDecision("sack", id, count, 0, GainReason.UNSUPPORTED_ITEM)
         if (count <= 0) return GainDecision("sack", unit.base, count, 0, GainReason.INVALID_AMOUNT)
 
         val observed = count * unit.amount
@@ -78,11 +80,12 @@ internal class HarvestLedger(private val admit: (String) -> Boolean = { false })
         return GainDecision("sack", unit.base, observed, if (allowed) gain else 0, reason(gain, allowed))
     }
 
-    private fun reason(remaining: Long, allowed: Boolean) = when {
-        remaining == 0L -> GainReason.RETURNED_PLACEMENT
-        allowed -> GainReason.HARVEST_CONFIRMED
-        else -> GainReason.NO_MATCHING_HARVEST
-    }
+    private fun reason(remaining: Long, allowed: Boolean) =
+        when {
+            remaining == 0L -> GainReason.RETURNED_PLACEMENT
+            allowed -> GainReason.HARVEST_CONFIRMED
+            else -> GainReason.NO_MATCHING_HARVEST
+        }
 
     fun mutation(id: String, fromShard: Boolean) {
         require(id == "TIMESTALK" || id == "ZOMBUD")
@@ -101,25 +104,30 @@ internal class HarvestLedger(private val admit: (String) -> Boolean = { false })
 
         fun consume(id: String, amount: Long, fromSack: Boolean): Long {
             var remaining = amount
-            credits.filter { it.id == id && it.sack != fromSack }.forEach { credit ->
-                val used = minOf(remaining, credit.count)
-                credit.count -= used
-                remaining -= used
-            }
+            credits
+                .filter { it.id == id && it.sack != fromSack }
+                .forEach { credit ->
+                    val used = minOf(remaining, credit.count)
+                    credit.count -= used
+                    remaining -= used
+                }
             return remaining
         }
 
-        val result = (gains.keys + sacks.keys).associateWith { id ->
-            val inventoryGain = consume(id, gains[id] ?: 0, false)
-            val sackGain = consume(id, sacks[id] ?: 0, true)
-            if (inventoryGain > sackGain) {
-                credits.add(Credit(id, inventoryGain - sackGain, false, now + HarvestTiming.INVENTORY_CREDIT_MILLIS))
-            }
-            if (sackGain > inventoryGain) {
-                credits.add(Credit(id, sackGain - inventoryGain, true, now + HarvestTiming.SACK_CREDIT_MILLIS))
-            }
-            (maxOf(inventoryGain, sackGain) - (exclusions[id] ?: 0)).coerceAtLeast(0)
-        }.filterValues { it > 0 }
+        val result =
+            (gains.keys + sacks.keys)
+                .associateWith { id ->
+                    val inventoryGain = consume(id, gains[id] ?: 0, false)
+                    val sackGain = consume(id, sacks[id] ?: 0, true)
+                    if (inventoryGain > sackGain) {
+                        credits.add(Credit(id, inventoryGain - sackGain, false, now + HarvestTiming.INVENTORY_CREDIT_MILLIS))
+                    }
+                    if (sackGain > inventoryGain) {
+                        credits.add(Credit(id, sackGain - inventoryGain, true, now + HarvestTiming.SACK_CREDIT_MILLIS))
+                    }
+                    (maxOf(inventoryGain, sackGain) - (exclusions[id] ?: 0)).coerceAtLeast(0)
+                }
+                .filterValues { it > 0 }
         credits.removeIf { it.count == 0L }
         gains.clear()
         sacks.clear()

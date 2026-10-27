@@ -21,7 +21,9 @@ internal data class AttributionEvent(
 
 /** Bounded, structured diagnostics: no chat, player identifiers, server address, or profile names. */
 internal class AttributionJournal(private val capacity: Int = 512) {
-    init { require(capacity > 0) }
+    init {
+        require(capacity > 0)
+    }
 
     private val events = ArrayDeque<AttributionEvent>()
     var droppedEvents = 0L
@@ -54,14 +56,16 @@ internal class HarvestAttribution(
     }
 
     private fun decision(value: GainDecision) {
-        record(AttributionEvent(
-            clock() - startedAt,
-            value.source,
-            item = value.item,
-            observed = value.observed,
-            admitted = value.admitted,
-            reason = value.reason.name,
-        ))
+        record(
+            AttributionEvent(
+                clock() - startedAt,
+                value.source,
+                item = value.item,
+                observed = value.observed,
+                admitted = value.admitted,
+                reason = value.reason.name,
+            )
+        )
     }
 
     fun harvested(id: String) {
@@ -116,11 +120,12 @@ internal class HarvestAttribution(
         note("pest_exclusion", id)
     }
 
-    fun flush(): Map<String, Long> = ledger.flush(clock()).also { gains ->
-        gains.forEach { (id, count) ->
-            record(AttributionEvent(clock() - startedAt, "credited", id, credited = count))
+    fun flush(): Map<String, Long> =
+        ledger.flush(clock()).also { gains ->
+            gains.forEach { (id, count) ->
+                record(AttributionEvent(clock() - startedAt, "credited", id, credited = count))
+            }
         }
-    }
 
     fun reset(reason: String) {
         inventoryGate.clear()

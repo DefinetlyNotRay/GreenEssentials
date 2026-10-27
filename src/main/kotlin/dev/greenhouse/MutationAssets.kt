@@ -5,37 +5,49 @@ import com.google.gson.JsonParser
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.properties.Property
 import com.mojang.authlib.properties.PropertyMap
+import java.util.Base64
+import java.util.UUID
 import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.item.component.ResolvableProfile
-import java.util.Base64
-import java.util.UUID
 
 internal object MutationAssets {
+
+    private val compactUuidPattern = Regex("(.{8})(.{4})(.{4})(.{4})(.{12})")
     private val profiles = mutableMapOf<String, GameProfile>()
     private val stacks = mutableMapOf<String, ItemStack>()
-    private var stackLevel: Any? = null
+    private var stackLevel: ClientLevel? = null
 
     // Entrypoints run before item component prototypes are bound. Only parse metadata here.
     fun load() {
-        listOf("/mutation-skins.json", "/tracker-skins.json").forEach { path ->
-            val resource = requireNotNull(javaClass.getResourceAsStream(path))
-            val skins = resource.bufferedReader().use { JsonParser.parseReader(it).asJsonObject }
-            skins.entrySet().forEach { (id, value) ->
-                val texture = value.asString
-                val data = JsonParser.parseString(String(Base64.getDecoder().decode(texture))).asJsonObject
-                val profileId = data["profileId"].asString
-                val uuid = UUID.fromString(profileId.replace(Regex("(.{8})(.{4})(.{4})(.{4})(.{12})"), "$1-$2-$3-$4-$5"))
-                val properties = PropertyMap(ImmutableMultimap.of("textures", Property("textures", texture)))
-                if (GreenhouseMutation.fromInternalId(id) != null) {
-                    GreenhouseMutation.registerSkin(id, texture, uuid.toString())
-                }
-                profiles[id] = GameProfile(uuid, "Greenhouse", properties)
+        loadSkins("/mutation-skins.json")
+        loadSkins("/tracker-skins.json")
+    }
+
+    private fun loadSkins(path: String) {
+        val resource = requireNotNull(javaClass.getResourceAsStream(path))
+        val skins = resource.bufferedReader().use { JsonParser.parseReader(it).asJsonObject }
+        for ((id, value) in skins.entrySet()) {
+            val texture = value.asString
+            val profile = createProfile(texture)
+            if (GreenhouseMutation.fromInternalId(id) != null) {
+                GreenhouseMutation.registerSkin(id, texture, profile.id.toString())
             }
+            profiles[id] = profile
         }
+    }
+
+    private fun createProfile(texture: String): GameProfile {
+        val decodedTexture = String(Base64.getDecoder().decode(texture))
+        val textureData = JsonParser.parseString(decodedTexture).asJsonObject
+        val profileId = textureData["profileId"].asString
+        val uuid = UUID.fromString(profileId.replace(compactUuidPattern, "$1-$2-$3-$4-$5"))
+        val properties = PropertyMap(ImmutableMultimap.of("textures", Property("textures", texture)))
+        return GameProfile(uuid, "Greenhouse", properties)
     }
 
     fun stack(id: String): ItemStack? {

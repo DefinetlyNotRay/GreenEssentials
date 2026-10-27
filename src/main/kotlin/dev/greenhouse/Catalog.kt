@@ -2,9 +2,11 @@ package dev.greenhouse
 
 internal object Catalog {
     data class Unit(val base: String, val amount: Long)
+
     val units: Map<String, Unit> = buildMap {
         fun family(base: String, vararg forms: Pair<String, Long>) {
-            put(base, Unit(base, 1)); forms.forEach { (id, amount) -> put(id, Unit(base, amount)) }
+            put(base, Unit(base, 1))
+            forms.forEach { (id, amount) -> put(id, Unit(base, amount)) }
         }
         family("WHEAT", "HAY_BLOCK" to 9, "ENCHANTED_WHEAT" to 160, "ENCHANTED_HAY_BALE" to 25600)
         family("SEEDS", "ENCHANTED_SEEDS" to 160, "BOX_OF_SEEDS" to 25600)
@@ -21,23 +23,53 @@ internal object Catalog {
         family("DOUBLE_PLANT", "ENCHANTED_SUNFLOWER" to 160, "COMPACTED_SUNFLOWER" to 25600)
         family("MOONFLOWER", "ENCHANTED_MOONFLOWER" to 160, "COMPACTED_MOONFLOWER" to 25600)
         family("WILD_ROSE", "ENCHANTED_WILD_ROSE" to 160, "COMPACTED_WILD_ROSE" to 25600)
-        listOf("CROPIE", "SQUASH", "FERMENTO", "HELIANTHUS", "SEASONING", "BURROWING_SPORES", "RAREFINDER_CHIP",
-            "CORNUCOPIA", "CARROT_ZEST", "DEEPFRIES", "AGGOURDIAN", "CANE_KNOT", "MELON_JUICE", "CACTUS_FLOWER",
-            "DESIGNER_COFFEE_BEANS", "FEASTFUNGUS", "BOTROOT", "SALTED_SUNFLOWER_SEEDS", "CRYSTALIZED_MOONLIGHT",
-            "FLORAL_GELATIN", "WARTY", "ETHEREAL_VINE", "ALL_IN_ALOE_FRAGMENT").forEach { family(it) }
+        listOf(
+                "CROPIE",
+                "SQUASH",
+                "FERMENTO",
+                "HELIANTHUS",
+                "SEASONING",
+                "BURROWING_SPORES",
+                "RAREFINDER_CHIP",
+                "CORNUCOPIA",
+                "CARROT_ZEST",
+                "DEEPFRIES",
+                "AGGOURDIAN",
+                "CANE_KNOT",
+                "MELON_JUICE",
+                "CACTUS_FLOWER",
+                "DESIGNER_COFFEE_BEANS",
+                "FEASTFUNGUS",
+                "BOTROOT",
+                "SALTED_SUNFLOWER_SEEDS",
+                "CRYSTALIZED_MOONLIGHT",
+                "FLORAL_GELATIN",
+                "WARTY",
+                "ETHEREAL_VINE",
+                "ALL_IN_ALOE_FRAGMENT",
+            )
+            .forEach { family(it) }
         GreenhouseMutation.entries.filter { it.internalId !in setOf("TIMESTALK", "ZOMBUD") }.forEach { family(it.internalId) }
     }
     val aliases = buildMap {
         units.keys.forEach { put(it.replace('_', ' ').lowercase(), it) }
         put("all-in aloe fragment", "ALL_IN_ALOE_FRAGMENT")
-        put("carrot", "CARROT_ITEM"); put("potato", "POTATO_ITEM"); put("nether wart", "NETHER_STALK")
-        put("melon slice", "MELON"); put("cocoa beans", "INK_SACK:3"); put("sunflower", "DOUBLE_PLANT")
-        put("enchanted cocoa beans", "ENCHANTED_COCOA"); put("enchanted nether wart", "ENCHANTED_NETHER_STALK")
+        put("carrot", "CARROT_ITEM")
+        put("potato", "POTATO_ITEM")
+        put("nether wart", "NETHER_STALK")
+        put("melon slice", "MELON")
+        put("cocoa beans", "INK_SACK:3")
+        put("sunflower", "DOUBLE_PLANT")
+        put("enchanted cocoa beans", "ENCHANTED_COCOA")
+        put("enchanted nether wart", "ENCHANTED_NETHER_STALK")
         GreenhouseMutation.entries.forEach { put(it.displayName.lowercase(), it.internalId) }
     }
+
     fun canonical(items: Map<String, Long>): Map<String, Long> = buildMap {
-        items.forEach { (id, count) -> units[id]?.let { unit ->
-            put(unit.base, getOrDefault(unit.base, 0) + count * unit.amount)
-        } }
+        items.forEach { (id, count) ->
+            units[id]?.let { unit ->
+                put(unit.base, getOrDefault(unit.base, 0) + count * unit.amount)
+            }
+        }
     }
 }

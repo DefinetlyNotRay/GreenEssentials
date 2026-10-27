@@ -1,7 +1,7 @@
 package dev.greenhouse
 
-import net.minecraft.world.phys.AABB
 import kotlin.math.floor
+import net.minecraft.world.phys.AABB
 
 /** Classifies only the Greenhouse's 10x10 planting grid. */
 internal object GreenhouseGridScanner {
@@ -37,16 +37,18 @@ internal object GreenhouseGridScanner {
         val occupiedByMutations = occupiedMutationCells(plot.middle, mutations)
         for (row in 0 until GRID_SIZE) {
             for (column in 0 until GRID_SIZE) {
-                val position = LorenzVec(
-                    middle.x + column - GRID_RADIUS.toDouble(),
-                    CROP_Y,
-                    middle.z + row - GRID_RADIUS.toDouble(),
-                )
-                val cropId = if (row to column in occupiedByMutations) {
-                    GreenhouseCropScanner.independentCropHeadIdAt(position)
-                } else {
-                    GreenhouseCropScanner.skyShardsCropIdAt(position)
-                } ?: continue
+                val position =
+                    LorenzVec(
+                        middle.x + column - GRID_RADIUS.toDouble(),
+                        CROP_Y,
+                        middle.z + row - GRID_RADIUS.toDouble(),
+                    )
+                val cropId =
+                    if (row to column in occupiedByMutations) {
+                        GreenhouseCropScanner.independentCropHeadIdAt(position)
+                    } else {
+                        GreenhouseCropScanner.skyShardsCropIdAt(position)
+                    } ?: continue
                 val category = CropCategory.fromCropId(cropId) ?: continue
                 add(CropCell(cropId, category, row, column, position))
             }
@@ -73,8 +75,7 @@ internal object GreenhouseGridScanner {
         }
     }
 
-    fun isInsideGrid(plot: GardenPlot, position: LorenzVec): Boolean =
-        isInsideGrid(plot.middle, position)
+    fun isInsideGrid(plot: GardenPlot, position: LorenzVec): Boolean = isInsideGrid(plot.middle, position)
 
     internal fun isInsideGrid(plotMiddle: LorenzVec, position: LorenzVec): Boolean {
         val middle = plotMiddle.toBlockPos()
@@ -95,14 +96,16 @@ internal object GreenhouseGridScanner {
         )
     }
 
-    fun isLoaded(plot: GardenPlot): Boolean = area(plot).let { area ->
-        listOf(
-            LorenzVec(area.minX, MIN_GARDEN_Y.toDouble(), area.minZ),
-            LorenzVec(area.minX, MIN_GARDEN_Y.toDouble(), area.maxZ - 1),
-            LorenzVec(area.maxX - 1, MIN_GARDEN_Y.toDouble(), area.minZ),
-            LorenzVec(area.maxX - 1, MIN_GARDEN_Y.toDouble(), area.maxZ - 1),
-        ).all { it.isInLoadedChunk() }
-    }
+    fun isLoaded(plot: GardenPlot): Boolean =
+        area(plot).let { area ->
+            listOf(
+                    LorenzVec(area.minX, MIN_GARDEN_Y.toDouble(), area.minZ),
+                    LorenzVec(area.minX, MIN_GARDEN_Y.toDouble(), area.maxZ - 1),
+                    LorenzVec(area.maxX - 1, MIN_GARDEN_Y.toDouble(), area.minZ),
+                    LorenzVec(area.maxX - 1, MIN_GARDEN_Y.toDouble(), area.maxZ - 1),
+                )
+                .all { it.isInLoadedChunk() }
+        }
 
     const val GRID_RADIUS = 5
     private const val GRID_SIZE = GRID_RADIUS * 2

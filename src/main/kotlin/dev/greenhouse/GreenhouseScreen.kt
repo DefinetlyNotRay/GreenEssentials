@@ -1,22 +1,26 @@
 package dev.greenhouse
 
-import net.minecraft.client.input.KeyEvent
-import net.minecraft.client.input.CharacterEvent
-import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.screens.Screen
-import net.minecraft.network.chat.Component
 import com.mojang.blaze3d.platform.InputConstants
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.CharacterEvent
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
 
 // Adapted from SkyHanni's original GreenhouseBlueprintScreen, retaining its layout and interactions.
 internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layouts")) {
-    private val plotId get() = currentPlot()?.id ?: -1
-    private val mc get() = Minecraft.getInstance()
+    private val plotId
+        get() = currentPlot()?.id ?: -1
+
+    private val mc
+        get() = Minecraft.getInstance()
+
     private lateinit var graphics: GuiGraphicsExtractor
 
     private val actions = mutableListOf<ActionArea>()
@@ -73,7 +77,7 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
             LibraryActions.captureGreenhouse()
         }
         val location = if (Storage.profile == null) "Select a profile: /greenhouse profile <name>" else PlotDetection.status()
-        drawString("§8" + mc.font.plainSubstrByWidth(location,panelWidth-PADDING*2),panelX+PADDING,panelY+30)
+        drawString("§8" + mc.font.plainSubstrByWidth(location, panelWidth - PADDING * 2), panelX + PADDING, panelY + 30)
 
         val listTop = panelY + HEADER_HEIGHT
         val listBottom = panelY + panelHeight - FOOTER_HEIGHT
@@ -135,8 +139,7 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
             val nameY = y + 8
             val nameLabel = "${if (active) "§a● " else "§7○ "}§f$name"
             val nameRight = (nameX + mc.font.width(nameLabel)).coerceAtMost(x + cardWidth - 8)
-            val nameHovered = currentMouseX in nameX until nameRight &&
-                currentMouseY in (y + 4) until (y + 19)
+            val nameHovered = currentMouseX in nameX until nameRight && currentMouseY in (y + 4) until (y + 19)
             drawString(
                 "${if (active) "§a● " else "§7○ "}${if (nameHovered) "§e" else "§f"}$name",
                 nameX,
@@ -253,35 +256,39 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
         }
         if (blueprint.importedCells.isNotEmpty()) {
             val target = LibraryActions.targetMutation(blueprint)
-            blueprint.importedCells.sortedBy { if (SpawningSurfaces.Surface.fromId(it.cropId) != null) 0 else 1 }.forEach { placement ->
-                val size = GreenhouseMutation.fromSkyShardsId(placement.cropId)?.size ?: 1
-                val role = GreenhouseLayoutAnalysis.roleFor(
-                    GreenhouseLayoutAnalysis.Entry(placement.cropId, size * size, placement.target),
-                    target,
-                )
-                repeat(size) { rowOffset ->
-                    repeat(size) { columnOffset ->
-                        drawPreviewCell(
-                            x,
-                            y,
-                            placement.column + columnOffset,
-                            placement.row + rowOffset,
-                            placement.cropId,
-                            role,
+            blueprint.importedCells
+                .sortedBy { if (SpawningSurfaces.Surface.fromId(it.cropId) != null) 0 else 1 }
+                .forEach { placement ->
+                    val size = GreenhouseMutation.fromSkyShardsId(placement.cropId)?.size ?: 1
+                    val role =
+                        GreenhouseLayoutAnalysis.roleFor(
+                            GreenhouseLayoutAnalysis.Entry(placement.cropId, size * size, placement.target),
+                            target,
                         )
+                    repeat(size) { rowOffset ->
+                        repeat(size) { columnOffset ->
+                            drawPreviewCell(
+                                x,
+                                y,
+                                placement.column + columnOffset,
+                                placement.row + rowOffset,
+                                placement.cropId,
+                                role,
+                            )
+                        }
                     }
                 }
-            }
         } else {
             val target = LibraryActions.targetMutation(blueprint)
             blueprint.mutations.forEach { placement ->
                 val cellX = floor(placement.offset.x).toInt() + GRID_SIZE / 2
                 val cellZ = floor(placement.offset.z).toInt() + GRID_SIZE / 2
                 val size = GreenhouseMutation.fromInternalId(placement.mutationId)?.size ?: placement.size
-                val role = GreenhouseLayoutAnalysis.roleFor(
-                    GreenhouseLayoutAnalysis.Entry(placement.mutationId.lowercase(), size * size),
-                    target,
-                )
+                val role =
+                    GreenhouseLayoutAnalysis.roleFor(
+                        GreenhouseLayoutAnalysis.Entry(placement.mutationId.lowercase(), size * size),
+                        target,
+                    )
                 drawPreviewCell(x, y, cellX, cellZ, placement.mutationId, role)
             }
         }
@@ -304,13 +311,14 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
             drawRect(left, top, right, bottom, TARGET_CELL_COLOR)
             drawRect(left + 1, top + 1, right - 1, bottom - 1, PREVIEW_BACKGROUND)
         } else {
-            val color = when (role) {
-                GreenhouseLayoutAnalysis.Role.SPAWN_INPUT -> SPAWN_INPUT_COLOR
-                GreenhouseLayoutAnalysis.Role.YIELD_BUFF -> YIELD_BUFF_COLOR
-                GreenhouseLayoutAnalysis.Role.UNIQUE_CROP -> UNIQUE_CROP_COLOR
-                GreenhouseLayoutAnalysis.Role.OTHER -> mutationColor(id)
-                GreenhouseLayoutAnalysis.Role.TARGET_OUTPUT -> error("Handled above")
-            }
+            val color =
+                when (role) {
+                    GreenhouseLayoutAnalysis.Role.SPAWN_INPUT -> SPAWN_INPUT_COLOR
+                    GreenhouseLayoutAnalysis.Role.YIELD_BUFF -> YIELD_BUFF_COLOR
+                    GreenhouseLayoutAnalysis.Role.UNIQUE_CROP -> UNIQUE_CROP_COLOR
+                    GreenhouseLayoutAnalysis.Role.OTHER -> mutationColor(id)
+                    GreenhouseLayoutAnalysis.Role.TARGET_OUTPUT -> error("Handled above")
+                }
             drawRect(left, top, right, bottom, color)
         }
     }
@@ -333,7 +341,8 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
         if (event.button() != 0) return super.mouseClicked(event, doubleClick)
-        val action = actions.lastOrNull { it.contains((event.x()/renderScale).toInt(), (event.y()/renderScale).toInt()) } ?: return false
+        val action =
+            actions.lastOrNull { it.contains((event.x() / renderScale).toInt(), (event.y() / renderScale).toInt()) } ?: return false
         LibraryActions.perform(action.action)
         return true
     }
@@ -341,7 +350,8 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
     override fun keyPressed(input: KeyEvent): Boolean {
         if (pendingRename != null) {
             when (input.key()) {
-                InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> saveRename()
+                InputConstants.KEY_RETURN,
+                InputConstants.KEY_NUMPADENTER -> saveRename()
                 InputConstants.KEY_BACKSPACE -> {
                     renameText = if (renameTextSelected) "" else renameText.dropLast(1)
                     renameTextSelected = false
@@ -368,12 +378,14 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
         return true
     }
 
-    private fun drawRect(x: Int, y: Int, right: Int, bottom: Int, color: Int) = graphics.fill(x,y,right,bottom,color)
-    private fun drawString(text: String, x: Int, y: Int) = graphics.text(mc.font,text,x,y,-1)
+    private fun drawRect(x: Int, y: Int, right: Int, bottom: Int, color: Int) = graphics.fill(x, y, right, bottom, color)
+
+    private fun drawString(text: String, x: Int, y: Int) = graphics.text(mc.font, text, x, y, -1)
+
     private fun drawFloatingRectDark(x: Int, y: Int, w: Int, h: Int) {
-        drawRect(x+2,y+2,x+w+2,y+h+2,0x80000000.toInt())
-        drawRect(x,y,x+w,y+h,-0xefefea)
-        graphics.outline(x,y,w,h,-0xcfcfca)
+        drawRect(x + 2, y + 2, x + w + 2, y + h + 2, 0x80000000.toInt())
+        drawRect(x, y, x + w, y + h, -0xefefea)
+        graphics.outline(x, y, w, h, -0xcfcfca)
     }
 
     private fun updateSmoothScroll() {
@@ -381,11 +393,12 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
         scrollOffset = scrollOffset.coerceIn(0.0, maximumScroll.toDouble())
 
         val now = System.nanoTime()
-        val elapsedSeconds = if (lastDrawNanos == 0L) {
-            0.0
-        } else {
-            ((now - lastDrawNanos) / NANOS_PER_SECOND).coerceIn(0.0, MAX_SCROLL_FRAME_TIME)
-        }
+        val elapsedSeconds =
+            if (lastDrawNanos == 0L) {
+                0.0
+            } else {
+                ((now - lastDrawNanos) / NANOS_PER_SECOND).coerceIn(0.0, MAX_SCROLL_FRAME_TIME)
+            }
         lastDrawNanos = now
 
         val interpolation = 1.0 - exp(-SCROLL_SMOOTHING_SPEED * elapsedSeconds)
@@ -416,7 +429,7 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
     }
 
     companion object {
-        private const val PANEL_WIDTH = 430
+        private const val PANEL_WIDTH = 500
         private const val PANEL_HEIGHT = 350
         private const val PADDING = 12
         private const val HEADER_HEIGHT = 42

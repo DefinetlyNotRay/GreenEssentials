@@ -1,11 +1,11 @@
 package dev.greenhouse
 
+import kotlin.math.floor
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
-import kotlin.math.floor
 
 internal object GreenhouseMutationScanner {
 
@@ -40,7 +40,8 @@ internal object GreenhouseMutationScanner {
             val mutation = GreenhouseMutation.fromSkullOwner(owner) ?: continue
             add(GreenhouseDetectedMutation(mutation, position.gridAnchor(), ""))
         }
-    }.distinctBy { Triple(it.mutation, it.position.x, it.position.z) }
+    }
+        .distinctBy { Triple(it.mutation, it.position.x, it.position.z) }
 
     private fun LorenzVec.gridAnchor(): LorenzVec = LorenzVec(floor(x), floor(y), floor(z))
 

@@ -12,11 +12,11 @@ internal fun <S> aliasCommand(dispatcher: CommandDispatcher<S>, name: String, ta
 }
 
 internal fun <S> registerGreenEssentialsAliases(dispatcher: CommandDispatcher<S>, root: CommandNode<S>) {
-    for (name in listOf("ge","greenessentials")) aliasCommand(dispatcher,name,root)
-    for (prefix in listOf("ge","greenessentials","greenhouse")) {
-        for (child in listOf("layouts","settings","hud")) {
-            aliasCommand(dispatcher,prefix+child,requireNotNull(root.getChild(child)))
+    for (name in listOf("ge", "greenessentials")) aliasCommand(dispatcher, name, root)
+    for (prefix in listOf("ge", "greenessentials", "greenhouse")) {
+        for (child in listOf("layouts", "settings", "hud")) {
+            aliasCommand(dispatcher, prefix + child, requireNotNull(root.getChild(child)))
         }
     }
-    aliasCommand(dispatcher,"shgreenhouseblueprint",requireNotNull(root.getChild("layouts")))
+    aliasCommand(dispatcher, "shgreenhouseblueprint", requireNotNull(root.getChild("layouts")))
 }

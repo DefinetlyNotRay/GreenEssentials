@@ -12,8 +12,9 @@ internal object SkyLayoutsLayoutCodec {
         require(input.contains(SKYLAYOUTS_HOST, ignoreCase = true)) {
             "The clipboard does not contain a SkyLayouts link."
         }
-        val encoded = shortLinkPattern.find(input)?.groupValues?.get(1)
-            ?: throw IllegalArgumentException("The clipboard does not contain a SkyLayouts short link.")
+        val encoded =
+            shortLinkPattern.find(input)?.groupValues?.get(1)
+                ?: throw IllegalArgumentException("The clipboard does not contain a SkyLayouts short link.")
         return decodeShortLink(URLDecoder.decode(encoded.replace("\\", ""), StandardCharsets.UTF_8))
     }
 
@@ -28,17 +29,17 @@ internal object SkyLayoutsLayoutCodec {
         require(header.drop(1).all { it in SHORT_ALPHABET }) {
             "The SkyLayouts short code contains an invalid header."
         }
-        val selectedPlot = header.drop(SHORT_HEADER_LENGTH).firstOrNull { it == '2' || it == '3' }
-            ?.digitToInt() ?: 1
+        val selectedPlot = header.drop(SHORT_HEADER_LENGTH).firstOrNull { it == '2' || it == '3' }?.digitToInt() ?: 1
         require(encodedBoards.isNotEmpty()) { "The SkyLayouts short link does not contain layout data." }
 
-        val boards = when (encodedBoards.first()) {
-            'p' -> decodePackedBoards(encodedBoards.substring(1))
-            'z' -> decodeCompressedBoards(encodedBoards)
-            else -> throw IllegalArgumentException("The SkyLayouts link uses an unsupported board encoding.")
-        }
-        val cells = boards[selectedPlot]
-            ?: throw IllegalArgumentException("The SkyLayouts short link does not contain Plot $selectedPlot data.")
+        val boards =
+            when (encodedBoards.first()) {
+                'p' -> decodePackedBoards(encodedBoards.substring(1))
+                'z' -> decodeCompressedBoards(encodedBoards)
+                else -> throw IllegalArgumentException("The SkyLayouts link uses an unsupported board encoding.")
+            }
+        val cells =
+            boards[selectedPlot] ?: throw IllegalArgumentException("The SkyLayouts short link does not contain Plot $selectedPlot data.")
         return layoutFromCells(cells)
     }
 
@@ -66,10 +67,11 @@ internal object SkyLayoutsLayoutCodec {
             "The SkyLayouts short link contains an invalid packed board header."
         }
         if (paletteSize == 0) return List(GRID_CELLS) { null }
-        val palette = encoded.substring(3, 3 + paletteSize).map { token ->
-            shortCropIds.getOrNull(shortValue(token))
-                ?: throw IllegalArgumentException("The SkyLayouts short link contains an unknown crop index.")
-        }
+        val palette =
+            encoded.substring(3, 3 + paletteSize).map { token ->
+                shortCropIds.getOrNull(shortValue(token))
+                    ?: throw IllegalArgumentException("The SkyLayouts short link contains an unknown crop index.")
+            }
         var packed = BigInteger.ZERO
         encoded.substring(3 + paletteSize).forEach { token ->
             packed = packed.shiftLeft(6).or(BigInteger.valueOf(shortValue(token).toLong()))
@@ -94,20 +96,26 @@ internal object SkyLayoutsLayoutCodec {
         require(size == GRID_SIZE && plotMask in 1 until (1 shl MAX_PLOTS) && encoded.length >= 4 + paletteSize) {
             "The SkyLayouts short link contains an invalid compressed board header."
         }
-        val palette = encoded.substring(4, 4 + paletteSize).map { token ->
-            shortCropIds.getOrNull(shortValue(token))
-                ?: throw IllegalArgumentException("The SkyLayouts short link contains an unknown crop index.")
-        }
+        val palette =
+            encoded.substring(4, 4 + paletteSize).map { token ->
+                shortCropIds.getOrNull(shortValue(token))
+                    ?: throw IllegalArgumentException("The SkyLayouts short link contains an unknown crop index.")
+            }
         val plots = (1..MAX_PLOTS).filter { plotMask and (1 shl (it - 1)) != 0 }
         val expectedBytes = plots.size * GRID_CELLS
         val cells = inflateRaw(decodeShortBase64(encoded.substring(4 + paletteSize)), expectedBytes)
-        return plots.mapIndexed { boardIndex, plot ->
-            plot to List(GRID_CELLS) { cellIndex ->
-                val paletteIndex = cells[boardIndex * GRID_CELLS + cellIndex].toInt() and 0xff
-                if (paletteIndex == 0) null else palette.getOrNull(paletteIndex - 1)
-                    ?: throw IllegalArgumentException("The SkyLayouts board references an unknown palette entry.")
+        return plots
+            .mapIndexed { boardIndex, plot ->
+                plot to
+                    List(GRID_CELLS) { cellIndex ->
+                        val paletteIndex = cells[boardIndex * GRID_CELLS + cellIndex].toInt() and 0xff
+                        if (paletteIndex == 0) null
+                        else
+                            palette.getOrNull(paletteIndex - 1)
+                                ?: throw IllegalArgumentException("The SkyLayouts board references an unknown palette entry.")
+                    }
             }
-        }.toMap()
+            .toMap()
     }
 
     private fun decodeShortBase64(encoded: String): ByteArray {
@@ -168,17 +176,16 @@ internal object SkyLayoutsLayoutCodec {
                     column = index % GRID_SIZE,
                     target = false,
                 )
-            },
+            }
         )
     }
 
-    private fun shortValue(token: Char): Int = SHORT_ALPHABET.indexOf(token).also {
-        require(it >= 0) { "The SkyLayouts short code contains an invalid character: $token" }
-    }
+    private fun shortValue(token: Char): Int =
+        SHORT_ALPHABET.indexOf(token).also {
+            require(it >= 0) { "The SkyLayouts short code contains an invalid character: $token" }
+        }
 
-    private fun normalizeId(id: String): String = id.lowercase()
-        .replace(Regex("[^a-z0-9]+"), "_")
-        .trim('_')
+    private fun normalizeId(id: String): String = id.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
 
     private val shortLinkPattern = "/l/([^?#\\s\\])>]+)".toRegex(RegexOption.IGNORE_CASE)
     private const val SKYLAYOUTS_HOST = "skylayouts.io"
@@ -190,15 +197,69 @@ internal object SkyLayoutsLayoutCodec {
     private const val MAX_SHORT_CODE_LENGTH = 4096
     private const val MAX_PLOTS = 3
 
-    private val shortCropIds = listOf(
-        "ALL_IN_ALOE", "ASHWREATH", "BLASTBERRY", "BROWN_MUSHROOM", "CACTUS", "CARROT", "CHEESEBITE",
-        "CHLORONITE", "CHOCOBERRY", "CHOCONUT", "CHORUS_FRUIT", "CINDERSHADE", "COALROOT", "COCOA_BEANS",
-        "CREAMBLOOM", "DEAD_PLANT", "DEVOURER", "DO_NOT_EAT_SHROOM", "DUSKBLOOM", "DUSTGRAIN", "FERMENTO",
-        "FIRE", "FLESHTRAP", "GLASSCORN", "GLOOMGOURD", "GODSEED", "LONELILY", "MAGIC_JELLYBEAN", "MELON",
-        "MOONFLOWER", "NETHER_WART", "NOCTILUME", "PHANTOMLEAF", "PLANTBOY_ADVANCE", "POTATO", "PUFFERCLOUD",
-        "PUMPKIN", "RED_MUSHROOM", "SCOURROOT", "SHADEVINE", "SHELLFRUIT", "SNOOZLING", "SOGGYBUD",
-        "STARTLEVINE", "STOPLIGHT_PETAL", "SUGAR_CANE", "SUNFLOWER", "THORNSHADE", "THUNDERLING", "TIMESTALK",
-        "TURTLELLINI", "VEILSHROOM", "WHEAT", "WILD_ROSE", "WITHERBLOOM", "ZOMBUD",
-        "FARMLAND", "SAND", "SOUL_SAND", "END_STONE", "DIRT", "MYCELIUM",
-    )
+    private val shortCropIds =
+        listOf(
+            "ALL_IN_ALOE",
+            "ASHWREATH",
+            "BLASTBERRY",
+            "BROWN_MUSHROOM",
+            "CACTUS",
+            "CARROT",
+            "CHEESEBITE",
+            "CHLORONITE",
+            "CHOCOBERRY",
+            "CHOCONUT",
+            "CHORUS_FRUIT",
+            "CINDERSHADE",
+            "COALROOT",
+            "COCOA_BEANS",
+            "CREAMBLOOM",
+            "DEAD_PLANT",
+            "DEVOURER",
+            "DO_NOT_EAT_SHROOM",
+            "DUSKBLOOM",
+            "DUSTGRAIN",
+            "FERMENTO",
+            "FIRE",
+            "FLESHTRAP",
+            "GLASSCORN",
+            "GLOOMGOURD",
+            "GODSEED",
+            "LONELILY",
+            "MAGIC_JELLYBEAN",
+            "MELON",
+            "MOONFLOWER",
+            "NETHER_WART",
+            "NOCTILUME",
+            "PHANTOMLEAF",
+            "PLANTBOY_ADVANCE",
+            "POTATO",
+            "PUFFERCLOUD",
+            "PUMPKIN",
+            "RED_MUSHROOM",
+            "SCOURROOT",
+            "SHADEVINE",
+            "SHELLFRUIT",
+            "SNOOZLING",
+            "SOGGYBUD",
+            "STARTLEVINE",
+            "STOPLIGHT_PETAL",
+            "SUGAR_CANE",
+            "SUNFLOWER",
+            "THORNSHADE",
+            "THUNDERLING",
+            "TIMESTALK",
+            "TURTLELLINI",
+            "VEILSHROOM",
+            "WHEAT",
+            "WILD_ROSE",
+            "WITHERBLOOM",
+            "ZOMBUD",
+            "FARMLAND",
+            "SAND",
+            "SOUL_SAND",
+            "END_STONE",
+            "DIRT",
+            "MYCELIUM",
+        )
 }

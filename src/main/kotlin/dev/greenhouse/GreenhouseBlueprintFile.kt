@@ -18,35 +18,40 @@ internal object GreenhouseBlueprintFile {
     )
 
     fun encode(name: String, blueprint: GreenHouseStorage.MutationBlueprintStorage): String {
-        val portableBlueprint = GreenHouseStorage.MutationBlueprintStorage(
-            minXOffset = blueprint.minXOffset,
-            minZOffset = blueprint.minZOffset,
-            maxXOffset = blueprint.maxXOffset,
-            maxZOffset = blueprint.maxZOffset,
-            mutations = blueprint.mutations.mapTo(mutableListOf()) { placement ->
-                GreenHouseStorage.MutationPlacementStorage(
-                    mutationId = placement.mutationId,
-                    offset = placement.offset,
-                    texture = "",
-                    size = placement.size,
-                )
-            },
-            importedCells = blueprint.importedCells.mapTo(mutableListOf()) { cell ->
-                GreenHouseStorage.BlueprintCellStorage(
-                    cropId = cell.cropId,
-                    row = cell.row,
-                    column = cell.column,
-                    target = cell.target,
-                )
-            },
-            targetMutationId = blueprint.targetMutationId,
-        )
+        val portableBlueprint =
+            GreenHouseStorage.MutationBlueprintStorage(
+                minXOffset = blueprint.minXOffset,
+                minZOffset = blueprint.minZOffset,
+                maxXOffset = blueprint.maxXOffset,
+                maxZOffset = blueprint.maxZOffset,
+                mutations =
+                    blueprint.mutations.mapTo(mutableListOf()) { placement ->
+                        GreenHouseStorage.MutationPlacementStorage(
+                            mutationId = placement.mutationId,
+                            offset = placement.offset,
+                            texture = "",
+                            size = placement.size,
+                        )
+                    },
+                importedCells =
+                    blueprint.importedCells.mapTo(mutableListOf()) { cell ->
+                        GreenHouseStorage.BlueprintCellStorage(
+                            cropId = cell.cropId,
+                            row = cell.row,
+                            column = cell.column,
+                            target = cell.target,
+                        )
+                    },
+                targetMutationId = blueprint.targetMutationId,
+            )
         return Json.gson.toJson(PortableLayout(name = name, blueprint = portableBlueprint))
     }
 
     fun decode(serialized: String): ImportedLayout {
         require(serialized.toByteArray().size <= MAX_FILE_BYTES) { "The layout file is too large." }
-        val portable = runCatching { Json.gson.fromJson(serialized, PortableLayout::class.java) }
+        val portable = runCatching {
+            Json.gson.fromJson(serialized, PortableLayout::class.java)
+        }
             .getOrElse { throw IllegalArgumentException("The layout file does not contain valid JSON.", it) }
         require(portable.format == FILE_FORMAT) { "This is not a SkyHanni Greenhouse layout file." }
         require(portable.version == FILE_VERSION) {
@@ -95,41 +100,48 @@ internal object GreenhouseBlueprintFile {
             require(cell.row in 0 until GRID_SIZE && cell.column in 0 until GRID_SIZE) {
                 "A crop is outside the Greenhouse grid."
             }
-            val layer = when {
-                SpawningSurfaces.Surface.fromId(cell.cropId) != null -> 2
-                GreenhouseMutation.fromSkyShardsId(cell.cropId) != null -> 1
-                else -> 0
-            }
-            require(occupiedCropCells.add(Triple(cell.row,cell.column,layer))) {
+            val layer =
+                when {
+                    SpawningSurfaces.Surface.fromId(cell.cropId) != null -> 2
+                    GreenhouseMutation.fromSkyShardsId(cell.cropId) != null -> 1
+                    else -> 0
+                }
+            require(occupiedCropCells.add(Triple(cell.row, cell.column, layer))) {
                 "The layout contains duplicate ${if (layer == 2) "surface" else if (layer == 1) "mutation" else "crop"} entries in row ${cell.row+1}, column ${cell.column+1}."
             }
         }
         require(
-            blueprint.targetMutationId.isEmpty() || blueprint.targetMutationId == NO_TARGET_MUTATION ||
-                GreenhouseMutation.fromInternalId(blueprint.targetMutationId) != null,
-        ) { "The layout has an unknown target mutation." }
+            blueprint.targetMutationId.isEmpty() ||
+                blueprint.targetMutationId == NO_TARGET_MUTATION ||
+                GreenhouseMutation.fromInternalId(blueprint.targetMutationId) != null
+        ) {
+            "The layout has an unknown target mutation."
+        }
 
         blueprint.minXOffset = -GRID_RADIUS
         blueprint.minZOffset = -GRID_RADIUS
         blueprint.maxXOffset = GRID_RADIUS - 1
         blueprint.maxZOffset = GRID_RADIUS - 1
-        val safeName = portable.name.filterNot {
-            it.isISOControl() || it == COLOR_CODE_MARKER || Character.getType(it) == Character.FORMAT.toInt()
-        }.trim()
+        val safeName =
+            portable.name
+                .filterNot {
+                    it.isISOControl() || it == COLOR_CODE_MARKER || Character.getType(it) == Character.FORMAT.toInt()
+                }
+                .trim()
         return ImportedLayout(safeName, blueprint)
     }
 
     fun suggestedFileName(name: String): String {
-        val safeName = name.replace(INVALID_FILE_NAME_CHARACTERS, "_").trim(' ', '.')
-            .ifEmpty { DEFAULT_FILE_NAME }
+        val safeName = name.replace(INVALID_FILE_NAME_CHARACTERS, "_").trim(' ', '.').ifEmpty { DEFAULT_FILE_NAME }
         return "$safeName$FILE_EXTENSION"
     }
 
-    fun withFileExtension(path: String): String = if (path.endsWith(FILE_EXTENSION, ignoreCase = true)) {
-        path
-    } else {
-        "$path$FILE_EXTENSION"
-    }
+    fun withFileExtension(path: String): String =
+        if (path.endsWith(FILE_EXTENSION, ignoreCase = true)) {
+            path
+        } else {
+            "$path$FILE_EXTENSION"
+        }
 
     const val FILE_EXTENSION = ".shgreenhouse.json"
     private const val FILE_FORMAT = "skyhanni-greenhouse-layout"

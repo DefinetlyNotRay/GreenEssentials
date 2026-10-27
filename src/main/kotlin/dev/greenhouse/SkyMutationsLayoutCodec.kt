@@ -9,9 +9,10 @@ internal object SkyMutationsLayoutCodec {
     fun decode(input: String): SkyShardsLayoutCodec.Layout {
         val code = extractCode(input)
         require(code.isNotEmpty()) { "The clipboard does not contain a SkyMutations layout code." }
-        val json = UriLzDecoder.decode(code)
-            ?: throw IllegalArgumentException("The SkyMutations layout uses invalid compressed data.")
-        val entries = runCatching { JsonParser.parseString(json).asJsonArray }
+        val json = UriLzDecoder.decode(code) ?: throw IllegalArgumentException("The SkyMutations layout uses invalid compressed data.")
+        val entries = runCatching {
+            JsonParser.parseString(json).asJsonArray
+        }
             .getOrElse { throw IllegalArgumentException("The SkyMutations layout does not contain valid JSON.", it) }
         require(entries.size() <= GRID_CELLS) { "The SkyMutations layout contains too many entries." }
 
@@ -35,19 +36,23 @@ internal object SkyMutationsLayoutCodec {
         }
         // This format repeats a large mutation in every covered cell, including output targets.
         val byCell = placements.associateBy { it.row to it.column }
-        val consumed = mutableSetOf<Pair<Int,Int>>()
-        return SkyShardsLayoutCodec.Layout(placements.sortedWith(compareBy({ it.row },{ it.column })).filter { placement ->
-            if (placement.row to placement.column in consumed) return@filter false
-            val size = GreenhouseMutation.fromSkyShardsId(placement.cropId)?.size ?: 1
-            repeat(size) { row -> repeat(size) { column ->
-                val key = placement.row+row to placement.column+column
-                val cell = byCell[key]
-                require(cell?.cropId == placement.cropId && cell.target == placement.target && consumed.add(key)) {
-                    "The SkyMutations layout contains an incomplete or overlapping mutation footprint."
+        val consumed = mutableSetOf<Pair<Int, Int>>()
+        return SkyShardsLayoutCodec.Layout(
+            placements.sortedWith(compareBy({ it.row }, { it.column })).filter { placement ->
+                if (placement.row to placement.column in consumed) return@filter false
+                val size = GreenhouseMutation.fromSkyShardsId(placement.cropId)?.size ?: 1
+                repeat(size) { row ->
+                    repeat(size) { column ->
+                        val key = placement.row + row to placement.column + column
+                        val cell = byCell[key]
+                        require(cell?.cropId == placement.cropId && cell.target == placement.target && consumed.add(key)) {
+                            "The SkyMutations layout contains an incomplete or overlapping mutation footprint."
+                        }
+                    }
                 }
-            } }
-            true
-        })
+                true
+            }
+        )
     }
 
     private fun extractCode(input: String): String {
@@ -59,18 +64,17 @@ internal object SkyMutationsLayoutCodec {
     }
 
     private fun normalizeId(name: String): String {
-        val normalized = name.lowercase()
-            .replace(Regex("[^a-z0-9]+"), "_")
-            .trim('_')
+        val normalized = name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
         return idAliases.getOrDefault(normalized, normalized)
     }
 
-    private val idAliases = mapOf(
-        "wheat_seeds" to "wheat",
-        "melon_seeds" to "melon",
-        "pumpkin_seeds" to "pumpkin",
-        "dead_plants" to "dead_plant",
-    )
+    private val idAliases =
+        mapOf(
+            "wheat_seeds" to "wheat",
+            "melon_seeds" to "melon",
+            "pumpkin_seeds" to "pumpkin",
+            "dead_plants" to "dead_plant",
+        )
 
     private val layoutQuery = "[?&]layout=([^&#\\s]+)".toRegex(RegexOption.IGNORE_CASE)
     private const val GRID_SIZE = 10
@@ -111,12 +115,13 @@ internal object SkyMutationsLayoutCodec {
                 return bits
             }
 
-            val first = when (readBits(2)) {
-                0 -> readBits(8).toChar().toString()
-                1 -> readBits(16).toChar().toString()
-                2 -> return ""
-                else -> return null
-            }
+            val first =
+                when (readBits(2)) {
+                    0 -> readBits(8).toChar().toString()
+                    1 -> readBits(16).toChar().toString()
+                    2 -> return ""
+                    else -> return null
+                }
             dictionary.add(first)
             var previous = first
             val result = StringBuilder(first)
@@ -139,8 +144,7 @@ internal object SkyMutationsLayoutCodec {
                     enlargeIn = 1 shl bitCount
                     bitCount++
                 }
-                val entry = dictionary.getOrNull(code)
-                    ?: if (code == dictionarySize) previous + previous.first() else return null
+                val entry = dictionary.getOrNull(code) ?: if (code == dictionarySize) previous + previous.first() else return null
                 result.append(entry)
                 if (result.length > MAX_OUTPUT_CHARS) return null
                 dictionary.add(previous + entry.first())
