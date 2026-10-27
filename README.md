@@ -1,6 +1,7 @@
 # GreenEssentials
 
 A client-side Fabric mod for Hypixel SkyBlock's Greenhouse.
+( Please let me know if you want any features added or any bugs that may occur )
 
 ## Features
 
