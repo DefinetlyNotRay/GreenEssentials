@@ -41,7 +41,7 @@ internal object LibraryActions {
     }
 
     fun loadLayout(plot: Int, name: String) {
-        require(currentPlot()?.id == plot) { "Stand in the Greenhouse plot where you want to load this layout." }
+        require(currentLayoutPlot()?.id == plot) { "Stand in the Greenhouse plot where you want to load this layout." }
         Layouts.use(name)
     }
 

@@ -95,7 +95,7 @@ internal enum class GreenhouseMutation(
 
         fun fromName(name: String): GreenhouseMutation? {
             val normalizedName = normalizeMutationName(name)
-            if (normalizedName in ignoredArmorStandNames) return null
+            if (normalizedName in ignoredArmorStandNames || normalizedName.endsWith("roots")) return null
             return entries.firstOrNull { mutation ->
                 mutation.normalizedNames.any { candidate -> normalizedName.contains(candidate) }
             }

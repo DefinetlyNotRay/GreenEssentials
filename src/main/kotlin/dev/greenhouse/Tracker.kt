@@ -92,6 +92,7 @@ internal object Tracker {
         wasEligible = false
         seenDeaths.clear()
         Layouts.clear()
+        DevourerRoots.clear()
     }
 
     fun setProfile(name: String) {
@@ -128,6 +129,7 @@ internal object Tracker {
             lastLevel = client.level
             profileName = null
             Storage.scope = null
+            PlotDetection.setLayoutTesting(false)
             resetRuntime("world_changed")
         }
         val player = client.player ?: return
@@ -154,6 +156,7 @@ internal object Tracker {
         }
         updateScope()
         PlotDetection.scanMenu()
+        DevourerRoots.refresh()
         Layouts.refresh()
         if (inGreenhouse()) Prices.refresh()
     }

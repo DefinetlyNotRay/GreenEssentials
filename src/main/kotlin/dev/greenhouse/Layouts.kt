@@ -23,13 +23,13 @@ internal object Layouts {
     val all get() = Storage.profile?.layouts.orEmpty()
 
     fun active(): GreenHouseStorage.MutationBlueprintStorage? =
-        currentPlot()?.let { plot ->
+        currentLayoutPlot()?.let { plot ->
             Storage.profile?.active?.get(plot.id)?.let(all::get)
         }
 
     fun use(name: String) {
         require(name in all) { "Unknown layout: $name" }
-        val plot = requireNotNull(currentPlot()) { "Stand in a Greenhouse plot." }
+        val plot = requireNotNull(currentLayoutPlot()) { "Stand in a Greenhouse plot." }
         Storage.profile!!.active[plot.id] = name
         clear()
         Storage.save()
@@ -44,12 +44,12 @@ internal object Layouts {
         val checked = GreenhouseBlueprintFile.decode(GreenhouseBlueprintFile.encode(safeName, blueprint)).blueprint
         profile.layouts[safeName] = checked
         Storage.save()
-        if (currentPlot() != null) use(safeName)
+        if (currentLayoutPlot() != null) use(safeName)
         say("Saved layout: $safeName")
     }
 
     fun capture(name: String, overwrite: Boolean = false) {
-        val plot = requireNotNull(currentPlot()) { "Stand in a Greenhouse plot." }
+        val plot = requireNotNull(currentLayoutPlot()) { "Stand in a Greenhouse plot." }
         require(GreenhouseGridScanner.isLoaded(plot)) { "Wait for the entire planting grid to load." }
         val scan = GreenhouseGridScanner.scan(plot)
         require(scan.mutations.isNotEmpty() || scan.crops.isNotEmpty()) { "No crops or mutations found in the planting grid." }
@@ -192,7 +192,7 @@ internal object Layouts {
     }
 
     fun refresh() {
-        val plot = currentPlot() ?: run {
+        val plot = currentLayoutPlot() ?: run {
             clear()
             return
         }
@@ -228,14 +228,24 @@ internal object Layouts {
     }
 
     private fun findMissingPlants(blueprint: GreenHouseStorage.MutationBlueprintStorage, plot: GardenPlot): List<Missing> {
-        val liveMutations = GreenhouseMutationScanner.scan(GreenhouseGridScanner.area(plot)).toMutableList()
+        val area = GreenhouseGridScanner.area(plot)
+        val liveMutations = GreenhouseMutationScanner.scan(area).toMutableList()
         val targetMutation = target(blueprint)
+        val neededDevourerInputs = if (Storage.settings.devourerInputsOnly && targetMutation == GreenhouseMutation.DEVOURER) {
+            val occupied = GreenhouseGridScanner.occupiedMutationCells(plot.middle, liveMutations)
+                .mapTo(mutableSetOf()) { (row, column) -> DevourerLayout.Cell(row, column) }
+            DevourerRoots.positions.mapTo(occupied) { DevourerLayout.cellAt(it, plot.middle) }
+            DevourerLayout.neededInputs(blueprint, occupied)
+        } else {
+            null
+        }
         return buildList {
             blueprint.mutations.forEach { saved ->
                 val mutation = GreenhouseMutation.fromInternalId(saved.mutationId) ?: return@forEach
                 if (mutation == targetMutation) return@forEach
                 val savedPosition = plot.middle + saved.offset
                 val expected = if (blueprint.importedCells.isNotEmpty()) savedPosition.copy(y = 74.0) else savedPosition
+                if (neededDevourerInputs != null && DevourerLayout.cellAt(expected, plot.middle) !in neededDevourerInputs) return@forEach
                 val match = liveMutations.filter {
                     it.mutation == mutation && matchesAnchor(it.position, expected, mutation.size)
                 }.minByOrNull { it.position.distanceSq(expected) }
@@ -248,6 +258,7 @@ internal object Layouts {
             }
             for (cell in blueprint.importedCells) {
                 if (cell.target || GreenhouseMutation.fromSkyShardsId(cell.cropId) != null) continue
+                if (neededDevourerInputs != null) continue
                 val category = CropCategory.fromCropId(cell.cropId) ?: continue
                 val position = LorenzVec(plot.middle.x + cell.column - 5, 74.0, plot.middle.z + cell.row - 5)
                 if (GreenhouseCropScanner.isMissingCrop(position, category)) add(Missing(cell.cropId, position, 1))

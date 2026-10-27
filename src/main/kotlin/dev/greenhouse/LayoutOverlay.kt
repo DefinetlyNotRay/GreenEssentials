@@ -1,6 +1,7 @@
 package dev.greenhouse
 
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
+import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.renderer.rendertype.RenderTypes
@@ -8,12 +9,36 @@ import net.minecraft.network.chat.Component
 
 /** Rendering consumes layout state; it does not detect harvests or update tracker totals. */
 internal object LayoutOverlay {
+    private val rootLabel = Component.literal("Devourer Roots").withStyle(ChatFormatting.GOLD)
+
     fun register() {
         LevelRenderEvents.COLLECT_SUBMITS.register { ctx ->
-            if (!inGreenhouse() || !Storage.settings.overlay) return@register
+            if (currentLayoutPlot() == null) return@register
             val level = Minecraft.getInstance().level ?: return@register
             val camera = ctx.levelState().cameraRenderState
             val stack = ctx.poseStack()
+            if (Storage.settings.highlightDevourerRoots) {
+                for (position in DevourerRoots.positions) {
+                    stack.pushPose()
+                    stack.translate(position.x - camera.pos.x, position.y + 2.3 - camera.pos.y, position.z - camera.pos.z)
+                    rotateLabel(stack, camera.orientation)
+                    stack.scale(0.018f, -0.018f, 0.018f)
+                    ctx.submitNodeCollector().submitText(
+                        stack,
+                        -Minecraft.getInstance().font.width(rootLabel) / 2f,
+                        0f,
+                        rootLabel.visualOrderText,
+                        false,
+                        Font.DisplayMode.NORMAL,
+                        15728880,
+                        -1,
+                        0x88000000.toInt(),
+                        0,
+                    )
+                    stack.popPose()
+                }
+            }
+            if (!Storage.settings.overlay) return@register
             Layouts.missingSurfaces.forEach { missing ->
                 val position = missing.position
                 stack.pushPose()

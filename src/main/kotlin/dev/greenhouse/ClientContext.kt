@@ -27,3 +27,5 @@ internal fun sidebar(): List<String> {
 internal fun inGreenhouse(): Boolean = PlotDetection.current() != null
 
 internal fun currentPlot(): GardenPlot? = PlotDetection.current()
+
+internal fun currentLayoutPlot(): GardenPlot? = PlotDetection.currentForLayouts()

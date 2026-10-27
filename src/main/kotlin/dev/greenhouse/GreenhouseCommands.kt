@@ -48,6 +48,10 @@ internal object GreenhouseCommands {
         .then(literal("debug").executes { action { TrackerDebug.export() } })
         .then(literal("version").executes { say(TrackerDebug.version()) })
         .then(literal("detect").executes { say(PlotDetection.status()) })
+        .then(literal("testplots")
+            .executes { setTestPlots(!PlotDetection.layoutTestMode) }
+            .then(literal("on").executes { setTestPlots(true) })
+            .then(literal("off").executes { setTestPlots(false) }))
         .then(literal("items").executes { showItems() })
         .then(literal("session").executes {
             Tracker.setMode(TrackerMode.SESSION)
@@ -133,9 +137,18 @@ internal object GreenhouseCommands {
         .then(literal("alltime").then(literal("confirm").executes { action { Tracker.resetTotals(TrackerMode.ALL_TIME) } }))
 
     private fun unloadLayout() {
-        currentPlot()?.let { Storage.profile?.active?.remove(it.id) }
+        currentLayoutPlot()?.let { Storage.profile?.active?.remove(it.id) }
         Layouts.clear()
         Storage.save()
+    }
+
+    private fun setTestPlots(enabled: Boolean): Int {
+        PlotDetection.setLayoutTesting(enabled)
+        return say(if (enabled) {
+            "Layout test mode enabled for all Garden plots, including visits. Resets when you change worlds."
+        } else {
+            "Layout test mode disabled."
+        })
     }
 
     private fun selectTarget(target: String) {
@@ -177,6 +190,6 @@ internal object GreenhouseCommands {
 
     private fun showHelp(): Int =
         say(
-            "/ge, /greenessentials, /greenhouse share all subcommands. /gelayouts opens layouts. /ge jellyshort controls Jellybean rendering. /ge profile <name>, capture <name>, import <name> (clipboard), importfile <file>, use/rotate/export/delete <name>, unload, target <mutation|none|auto>, toggle, overlay, price <id> <coins>, prices, hud <x> <y>, debug, version, detect, items, stats, session, alltime, reset confirm"
+            "/ge, /greenessentials, /greenhouse share all subcommands. /gelayouts opens layouts. /ge jellyshort controls Jellybean rendering. /ge profile <name>, capture <name>, import <name> (clipboard), importfile <file>, use/rotate/export/delete <name>, unload, target <mutation|none|auto>, toggle, overlay, price <id> <coins>, prices, hud <x> <y>, testplots <on|off>, debug, version, detect, items, stats, session, alltime, reset confirm"
         )
 }

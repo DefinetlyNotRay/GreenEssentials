@@ -204,6 +204,27 @@ class LayoutOptions {
             Storage.settings.overlay = it
             Layouts.clear()
         }
+
+    @JvmField
+    @Expose
+    @ConfigOption(
+        name = "Devourer Spawners",
+        desc = "Only highlight spawners still needed by an unoccupied Devourer spawn spot. Shared spawners stay highlighted until no spawn spot needs them.",
+    )
+    @ConfigEditorBoolean
+    val devourerInputsOnly = setting(Storage.settings.devourerInputsOnly) {
+        Storage.settings.devourerInputsOnly = it
+        Layouts.clear()
+    }
+
+    @JvmField
+    @Expose
+    @ConfigOption(name = "Highlight Roots", desc = "Show an orange name tag above every detected root, even without an active layout.")
+    @ConfigEditorBoolean
+    val highlightDevourerRoots = setting(Storage.settings.highlightDevourerRoots) {
+        Storage.settings.highlightDevourerRoots = it
+    }
+
     @JvmField
     @ConfigOption(name = "Layout Library", desc = "Capture, import, rotate, and load schematics. Command: /ge layouts or /gelayouts.")
     @ConfigEditorButton(buttonText = "Open")

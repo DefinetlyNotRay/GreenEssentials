@@ -7,6 +7,15 @@ import net.minecraft.core.component.DataComponents
 
 /** The plot map, menu slots, lore flags and bounds used by SkyHanni's GardenPlotApi. */
 internal object PlotDetection {
+    var layoutTestMode = false
+        private set
+
+    fun setLayoutTesting(enabled: Boolean) {
+        layoutTestMode = enabled
+        Layouts.clear()
+        DevourerRoots.clear()
+    }
+
     data class PlotInfo(
         var name: String = "",
         var greenhouse: Boolean = false,
@@ -91,6 +100,23 @@ internal object PlotDetection {
         return plotAt(position)?.takeIf { greenhouseAt(position, sidebar(), tabLines(), Storage.profile?.plots.orEmpty()) }
     }
 
+    fun layoutPlotAt(
+        position: LorenzVec,
+        sidebar: List<String>,
+        tab: List<String>,
+        plots: Map<Int, PlotInfo>,
+        testMode: Boolean,
+    ): GardenPlot? {
+        val plot = plotAt(position) ?: return null
+        val allowed = if (testMode) isGarden(sidebar, tab) else greenhouseAt(position, sidebar, tab, plots)
+        return plot.takeIf { allowed }
+    }
+
+    fun currentForLayouts(): GardenPlot? {
+        val player = Minecraft.getInstance().player ?: return null
+        return layoutPlotAt(player.getLorenzVec(), sidebar(), tabLines(), Storage.profile?.plots.orEmpty(), layoutTestMode)
+    }
+
     fun scanMenu() {
         val client = Minecraft.getInstance()
         val screen = client.currentScreen as? AbstractContainerScreen<*> ?: return
@@ -117,6 +143,7 @@ internal object PlotDetection {
         val player = Minecraft.getInstance().player ?: return "No world loaded"
         val plot = plotAt(player.getLorenzVec()) ?: return "Outside the Garden plot grid"
         if (!isGarden(sidebar(), tabLines())) return "Garden not detected"
+        if (layoutTestMode) return "Test mode: Garden Plot ${plot.id}"
         val info = Storage.profile?.plots?.get(plot.id)
         return if (current() != null) "Greenhouse Plot ${plot.id}"
         else if (info != null) "Plot ${plot.id}: ${info.name} (not a greenhouse)" else "Plot ${plot.id} unknown: open Configure Plots once"

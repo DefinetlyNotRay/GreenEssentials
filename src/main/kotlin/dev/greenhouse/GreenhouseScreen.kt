@@ -16,7 +16,7 @@ import net.minecraft.network.chat.Component
 // Adapted from SkyHanni's original GreenhouseBlueprintScreen, retaining its layout and interactions.
 internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layouts")) {
     private val plotId
-        get() = currentPlot()?.id ?: -1
+        get() = currentLayoutPlot()?.id ?: -1
 
     private val mc
         get() = Minecraft.getInstance()

@@ -19,6 +19,8 @@ internal class Settings {
     var trackerMode = TrackerMode.ALL_TIME
     var enabled = true
     var overlay = true
+    var devourerInputsOnly = true
+    var highlightDevourerRoots = true
     var hudX = 8
     var hudY = 40
     var hudScale = 1.0f

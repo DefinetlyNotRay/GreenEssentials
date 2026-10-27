@@ -26,6 +26,7 @@ class GreenhouseCommandsTest {
             "price WHEAT 3.5", "prices", "hud", "hud 12 30", "debug", "version", "detect", "items", "session",
             "alltime", "stats", "reset", "reset confirm", "reset session confirm", "reset alltime confirm",
             "jellyshort", "jellyshort shorten", "jellyshort hide", "jellyshort height 2",
+            "testplots", "testplots on", "testplots off",
         )
         for (root in listOf("greenhouse", "greenessentials", "ge")) {
             for (command in commands) {

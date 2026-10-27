@@ -6,6 +6,42 @@ import org.junit.jupiter.api.Test
 class PlotDetectionTest {
     private val scoreboard = listOf("§e§lSKYBLOCK","§7⏣ §bPlot - My Farm")
     private val garden = listOf("§bArea: §aGarden")
+
+    @Test fun `layout test mode accepts an unknown plot while normal detection still rejects it`() {
+        val position = LorenzVec(96, 74, -96)
+        assertNull(PlotDetection.layoutPlotAt(position, scoreboard, garden, emptyMap(), testMode = false))
+        val plot = PlotDetection.layoutPlotAt(position, scoreboard, garden, emptyMap(), testMode = true)
+        assertEquals(6, plot?.id)
+        assertEquals(LorenzVec(96, 10, -96), plot?.middle)
+        assertFalse(PlotDetection.greenhouseAt(position, scoreboard, garden, emptyMap()))
+    }
+
+    @Test fun `visiting garden test layouts use the current plot coordinates`() {
+        val visitorTab = garden + "Visiting: Friend"
+        val first = PlotDetection.layoutPlotAt(LorenzVec(-96, 74, 0), scoreboard, visitorTab, emptyMap(), true)
+        val second = PlotDetection.layoutPlotAt(LorenzVec(96, 74, 96), scoreboard, visitorTab, emptyMap(), true)
+        assertEquals(2, first?.id)
+        assertEquals(8, second?.id)
+        assertEquals(LorenzVec(-96, 10, 0), first?.middle)
+        assertEquals(LorenzVec(96, 10, 96), second?.middle)
+    }
+
+    @Test fun `layout test mode still rejects other islands and coordinates outside the garden`() {
+        assertNull(PlotDetection.layoutPlotAt(LorenzVec(0, 74, 0), scoreboard, listOf("Area: Hub"), emptyMap(), true))
+        assertNull(PlotDetection.layoutPlotAt(LorenzVec(241, 74, 0), scoreboard, garden, emptyMap(), true))
+    }
+
+    @Test fun `layout test mode is temporary and does not create saved greenhouse flags`() {
+        val settings = Settings()
+        try {
+            PlotDetection.setLayoutTesting(true)
+            assertTrue(PlotDetection.layoutTestMode)
+            assertFalse(Json.gson.toJson(settings).contains("layoutTestMode"))
+            assertTrue(settings.profiles.isEmpty())
+        } finally {
+            PlotDetection.setLayoutTesting(false)
+        }
+    }
     @Test fun `plot centres reproduce every SkyHanni plot and Configure Plots slot`() {
         val map = listOf(listOf(21,13,9,14,22),listOf(15,5,1,6,16),listOf(10,2,0,3,11),
             listOf(17,7,4,8,18),listOf(23,19,12,20,24))
