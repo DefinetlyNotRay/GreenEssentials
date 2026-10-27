@@ -21,16 +21,20 @@ internal object MutationAssets {
 
     // Entrypoints run before item component prototypes are bound. Only parse metadata here.
     fun load() {
-        val resource = requireNotNull(javaClass.getResourceAsStream("/mutation-skins.json"))
-        val skins = resource.bufferedReader().use { JsonParser.parseReader(it).asJsonObject }
-        skins.entrySet().forEach { (id, value) ->
-            val texture = value.asString
-            val data = JsonParser.parseString(String(Base64.getDecoder().decode(texture))).asJsonObject
-            val profileId = data["profileId"].asString
-            val uuid = UUID.fromString(profileId.replace(Regex("(.{8})(.{4})(.{4})(.{4})(.{12})"), "$1-$2-$3-$4-$5"))
-            val properties = PropertyMap(ImmutableMultimap.of("textures", Property("textures", texture)))
-            GreenhouseMutation.registerSkin(id, texture, uuid.toString())
-            profiles[id] = GameProfile(uuid, "Greenhouse", properties)
+        listOf("/mutation-skins.json", "/tracker-skins.json").forEach { path ->
+            val resource = requireNotNull(javaClass.getResourceAsStream(path))
+            val skins = resource.bufferedReader().use { JsonParser.parseReader(it).asJsonObject }
+            skins.entrySet().forEach { (id, value) ->
+                val texture = value.asString
+                val data = JsonParser.parseString(String(Base64.getDecoder().decode(texture))).asJsonObject
+                val profileId = data["profileId"].asString
+                val uuid = UUID.fromString(profileId.replace(Regex("(.{8})(.{4})(.{4})(.{4})(.{12})"), "$1-$2-$3-$4-$5"))
+                val properties = PropertyMap(ImmutableMultimap.of("textures", Property("textures", texture)))
+                if (GreenhouseMutation.fromInternalId(id) != null) {
+                    GreenhouseMutation.registerSkin(id, texture, uuid.toString())
+                }
+                profiles[id] = GameProfile(uuid, "Greenhouse", properties)
+            }
         }
     }
 
@@ -44,7 +48,7 @@ internal object MutationAssets {
         return stacks.getOrPut(id) {
             ItemStack(Items.PLAYER_HEAD).apply {
                 set(DataComponents.PROFILE, ResolvableProfile.createResolved(profile))
-                set(DataComponents.CUSTOM_NAME, Component.literal(GreenhouseMutation.fromInternalId(id)!!.displayName))
+                set(DataComponents.CUSTOM_NAME, Component.literal(Prices.displayName(id)))
             }
         }
     }

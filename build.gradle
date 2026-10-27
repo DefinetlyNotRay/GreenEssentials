@@ -90,7 +90,7 @@ tasks.register('verifyDistribution') {
                 'fabric.mod.json', 'greenessentials.accesswidener',
                 'dev/greenhouse/deps/moulconfig/gui/MoulConfigEditor.class',
                 'META-INF/services/dev.greenhouse.deps.moulconfig.common.IMinecraft',
-                'mutation-drops.json', 'LICENSE', 'LIBNINEPATCH-LICENSE',
+                'mutation-drops.json', 'mutation-skins.json', 'tracker-skins.json', 'LICENSE', 'LIBNINEPATCH-LICENSE',
                 'MOULCONFIG-LGPL-3.0.txt', 'MOULCONFIG-GPL-3.0.txt',
                 'THIRD-PARTY-NOTICES.md', 'SOURCE-AND-REBUILD.md',
                 'greenessentials-jellyshort.mixins.json',

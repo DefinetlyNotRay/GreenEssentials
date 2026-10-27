@@ -116,6 +116,7 @@ internal object TrackerHud {
         graphics.text(font,"§6§lGreenEssentials Tracker §7[${Tracker.mode.label}]",x,y,-1)
         shown.forEachIndexed { index,row ->
             val rowY = y+16+index*15
+            val textOffset = if (Storage.settings.hudIcons) 15 else 0
             (if (Storage.settings.hudIcons) icon(row.id) else null)?.let {
                 graphics.pose().pushMatrix(); graphics.pose().translate(x.toFloat(),rowY.toFloat()); graphics.pose().scale(0.75f,0.75f)
                 graphics.item(it,0,0); graphics.pose().popMatrix()
@@ -124,7 +125,7 @@ internal object TrackerHud {
             val value = row.value?.let { "§6${Tracker.number(it)}" } ?: "§cUnpriced"
             val valueWidth = font.width(value)
             val label = amount+"§f"+row.name
-            graphics.text(font,font.plainSubstrByWidth(label,(width-valueWidth-22).coerceAtLeast(0)),x+15,rowY+2,-1)
+            graphics.text(font,font.plainSubstrByWidth(label,(width-valueWidth-textOffset-7).coerceAtLeast(0)),x+textOffset,rowY+2,-1)
             graphics.text(font,value,x+width-valueWidth,rowY+2,-1)
         }
         footer.forEachIndexed { index,line -> graphics.text(font,line,x,y+17+shown.size*15+index*11,-1) }
@@ -167,6 +168,7 @@ internal object TrackerHud {
                 "INK_SACK:3" -> Items.COCOA_BEANS; "SUGAR_CANE" -> Items.SUGAR_CANE; "CACTUS" -> Items.CACTUS
                 "RED_MUSHROOM" -> Items.RED_MUSHROOM; "BROWN_MUSHROOM" -> Items.BROWN_MUSHROOM
                 "DOUBLE_PLANT" -> Items.SUNFLOWER; "MOONFLOWER" -> Items.BLUE_ORCHID; "WILD_ROSE" -> Items.ROSE_BUSH
+                "ETHEREAL_VINE" -> Items.VINE
                 else -> return null
             }
             ItemStack(item)

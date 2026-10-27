@@ -19,3 +19,5 @@ The bundled mutation-drops.json records crop item identities checked against all
 Corresponding dependency source archives and build instructions are provided in third_party/ and SOURCE-AND-REBUILD.md. The accompanying GPLv3 text required by LGPLv3 is in MOULCONFIG-GPL-3.0.txt.
 
 SpawningSurfaces.kt contains growth-surface identities checked against https://hypixelskyblock.minecraft.wiki/w/Mutations on 2026-10-22. No prose or images from the wiki are bundled for this feature.
+
+Tracker item skins: tracker-skins.json contains Helianthus and Fermento skin descriptors from Hypixel's public item-resource endpoint (https://api.hypixel.net/v2/resources/skyblock/items), retrieved on 2026-10-27. Texture images are resolved by Minecraft, as with mutation-skins.json.
