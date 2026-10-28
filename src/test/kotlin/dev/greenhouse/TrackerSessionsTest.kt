@@ -41,4 +41,23 @@ class TrackerSessionsTest {
         assertEquals(TrackerMode.SESSION,Json.gson.fromJson(Json.gson.toJson(settings),Settings::class.java).trackerMode)
         assertEquals(TrackerMode.ALL_TIME,Json.gson.fromJson("{}",Settings::class.java).trackerMode)
     }
+    @Test fun `costs share the existing session scope lifetime and reset`() {
+        val sessions = TrackerSessions()
+        sessions.record("apple", mapOf("WHEAT" to 10L))
+        val generation = sessions.recordCost("apple", 100.0)
+        sessions.recordCost("banana", 250.0)
+        assertEquals(10L, sessions.view("apple").items["WHEAT"])
+        assertEquals(100.0, sessions.view("apple").cost)
+        sessions.reset("apple")
+        sessions.refundCost("apple", 100.0, generation)
+        assertEquals(TrackerTotals(emptyMap(), 0), sessions.view("apple"))
+        val nextGeneration = sessions.recordCost("apple", null)
+        sessions.refundCost("apple", 100.0, generation)
+        assertEquals(1, sessions.view("apple").unpricedCosts)
+        sessions.refundCost("apple", null, nextGeneration)
+        assertEquals(0, sessions.view("apple").unpricedCosts)
+        assertEquals(250.0, sessions.view("banana").cost)
+        assertEquals(0.0, TrackerSessions().view("banana").cost)
+    }
+
 }

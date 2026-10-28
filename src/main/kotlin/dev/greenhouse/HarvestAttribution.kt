@@ -85,6 +85,7 @@ internal class HarvestAttribution(
     }
 
     fun snapshot(items: Map<String, Long>, eligible: Boolean) {
+        ledger.expireReturns(clock())
         if (eligible != lastEligibility) {
             note("inventory_context", reason = if (eligible) "eligible" else "baseline_only")
             lastEligibility = eligible
@@ -92,21 +93,21 @@ internal class HarvestAttribution(
         ledger.snapshot(items, eligible).forEach(::decision)
     }
 
-    fun sackReport(items: Map<String, Long>, eligible: Boolean) {
+    fun sackReport(items: Map<String, Long>, eligible: Boolean, additions: Map<String, Long> = items) {
+        ledger.expireReturns(clock())
         if (!eligible) {
             note("sack_report_rejected", reason = "context_ineligible")
             return
         }
         note("sack_report")
-        items.forEach { (id, count) ->
-            decision(ledger.sack(id, count) { sackGate.allows(it, clock()) })
+        (items.keys + additions.keys).forEach { id ->
+            decision(ledger.sack(id, items[id] ?: 0, additions[id] ?: 0) { sackGate.allows(it, clock()) })
         }
         sackGate.consume(items.keys.map { Catalog.units[it]?.base ?: it }.toSet())
-        ledger.finishSackReport()
     }
 
-    fun returned(id: String) {
-        ledger.ignoreReturn(id, now = clock())
+    fun returned(id: String, key: String? = null, duration: Long = HarvestTiming.RETURN_CREDIT_MILLIS, onReturn: () -> Unit = {}) {
+        ledger.ignoreReturn(id, now = clock(), onReturn = onReturn, key = key, duration = duration)
         note("placed_item_returned", id)
     }
 

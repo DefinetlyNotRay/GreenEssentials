@@ -159,11 +159,6 @@ class HudOptions {
     val icons = setting(Storage.settings.hudIcons) { Storage.settings.hudIcons = it }
     @JvmField
     @Expose
-    @ConfigOption(name = "Farming Time", desc = "Show time spent actively harvesting.")
-    @ConfigEditorBoolean
-    val time = setting(Storage.settings.hudTime) { Storage.settings.hudTime = it }
-    @JvmField
-    @Expose
     @ConfigOption(name = "Price Status", desc = "Show pricing status and the number of unpriced items.")
     @ConfigEditorBoolean
     val prices = setting(Storage.settings.hudPrices) { Storage.settings.hudPrices = it }

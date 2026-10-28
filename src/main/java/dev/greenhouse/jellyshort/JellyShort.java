@@ -126,11 +126,9 @@ public final class JellyShort {
                 pieces.add(new JellybeanFilter.Piece(entity.getId(), entity.getX(), entity.getY(), entity.getZ()));
             }
         }
-        Set<Integer> fullPlantIds = JellybeanFilter.select(pieces, 0, true);
         hidden.addAll(JellybeanFilter.select(pieces, height, mode.equals("hide")));
         java.util.Map<Long, Plant> columns = new java.util.HashMap<>();
         for (var piece : pieces) {
-            if (!fullPlantIds.contains(piece.id())) continue;
             long key = BlockPos.asLong((int)Math.floor(piece.x()), 0, (int)Math.floor(piece.z()));
             Plant previous = columns.get(key);
             if (previous == null || piece.y() < previous.y) columns.put(key, new Plant(piece.x(), piece.y(), piece.z()));
@@ -152,7 +150,8 @@ public final class JellyShort {
             int x = (int)Math.floor(plant.x), z = (int)Math.floor(plant.z);
             // Find the actual cane base: armor-stand origins sit below their visible heads.
             for (int y : CaneFilter.select((int)Math.floor(plant.y), height, mode.equals("hide"),
-                testY -> level.getBlockState(new BlockPos(x, testY, z)).is(Blocks.SUGAR_CANE)))
+                testY -> level.getBlockState(new BlockPos(x, testY, z)).is(Blocks.SUGAR_CANE),
+                testY -> isMelonStem(level.getBlockState(new BlockPos(x, testY, z)))))
                 nextBlocks.add(BlockPos.asLong(x, y, z));
         }
         updateHiddenBlocks(nextBlocks);
@@ -177,7 +176,11 @@ public final class JellyShort {
     }
 
     public static boolean shouldHideBlock(BlockPos pos, BlockState state) {
-        return state.is(Blocks.SUGAR_CANE) && hiddenBlocks.contains(pos.asLong());
+        return (state.is(Blocks.SUGAR_CANE) || isMelonStem(state)) && hiddenBlocks.contains(pos.asLong());
+    }
+
+    private static boolean isMelonStem(BlockState state) {
+        return state.is(Blocks.MELON_STEM) || state.is(Blocks.ATTACHED_MELON_STEM);
     }
 
     public static boolean shouldHide(Entity entity) { return hidden.contains(entity.getId()); }

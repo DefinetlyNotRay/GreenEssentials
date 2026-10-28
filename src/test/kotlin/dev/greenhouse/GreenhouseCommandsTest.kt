@@ -25,6 +25,7 @@ class GreenhouseCommandsTest {
             "delete My layout", "unload", "target All-in Aloe", "target none", "target auto", "toggle", "overlay",
             "price WHEAT 3.5", "prices", "hud", "hud 12 30", "debug", "version", "detect", "items", "session",
             "alltime", "stats", "reset", "reset confirm", "reset session confirm", "reset alltime confirm",
+            "daily", "daily 2026-10-27", "daily 2026-10-01 to 2026-10-27", "daily 2026-10-01 2026-10-27", "reset daily confirm",
             "jellyshort", "jellyshort shorten", "jellyshort hide", "jellyshort height 2",
             "testplots", "testplots on", "testplots off",
         )

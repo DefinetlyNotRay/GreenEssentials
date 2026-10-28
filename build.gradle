@@ -3,7 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.4.10'
     id 'com.gradleup.shadow' version '9.6.0'
 }
-version = '0.1.28'
+version = '0.2.0'
 group = 'dev.greenhouse'
 repositories { mavenLocal(); maven { url = 'https://maven.notenoughupdates.org/releases/' }; mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
 def mc = providers.gradleProperty('minecraft_version').getOrElse('26.1.2')
@@ -97,7 +97,9 @@ tasks.register('verifyDistribution') {
                 'dev/greenhouse/jellyshort/JellyShort.class',
                 'dev/greenhouse/jellyshort/mixin/EntityRenderDispatcherMixin.class',
                 'dev/greenhouse/jellyshort/mixin/ModelBlockRendererMixin.class',
-                'dev/greenhouse/jellyshort/mixin/SodiumBlockRendererMixin.class'
+                'dev/greenhouse/jellyshort/mixin/SodiumBlockRendererMixin.class',
+                'greenessentials-hud.mixins.json',
+                'dev/greenhouse/mixin/TrackerKeyboardMixin.class'
             ]
             required.each { name ->
                 if (zip.getEntry(name) == null) throw new GradleException("Missing distribution entry: $name")
@@ -114,6 +116,7 @@ tasks.register('verifyDistribution') {
             if (minecraftJar == null) throw new GradleException('Could not locate Minecraft for render-hook validation')
             new java.util.zip.ZipFile(minecraftJar).withCloseable { minecraftZip ->
                 def hooks = [
+                    ['net/minecraft/client/KeyboardHandler.class', 'charTyped', 'dev/greenhouse/mixin/TrackerKeyboardMixin.class', 'greenhouse$typeDate', 'V', 'CallbackInfo'],
                     [targetClass, 'shouldRender', 'dev/greenhouse/jellyshort/mixin/EntityRenderDispatcherMixin.class', 'jellyshort$visible', 'Z', 'CallbackInfoReturnable'],
                     ['net/minecraft/client/renderer/block/ModelBlockRenderer.class', 'tesselateBlock', 'dev/greenhouse/jellyshort/mixin/ModelBlockRendererMixin.class', 'jellyshort$hideCane', 'V', 'CallbackInfo'],
                 ]

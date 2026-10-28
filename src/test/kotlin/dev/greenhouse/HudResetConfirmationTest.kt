@@ -4,6 +4,28 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class HudResetConfirmationTest {
+    @Test fun `daily reset requires the same date on both clicks`() {
+        val confirmation = HudResetConfirmation()
+        assertFalse(confirmation.click("apple", TrackerMode.DAILY, 100, "2026-10-26"))
+        assertTrue(confirmation.armed("apple", TrackerMode.DAILY, 200, "2026-10-26"))
+        assertFalse(confirmation.click("apple", TrackerMode.DAILY, 300, "2026-10-27"))
+        assertTrue(confirmation.click("apple", TrackerMode.DAILY, 400, "2026-10-27"))
+    }
+
+    @Test fun `midnight invalidates a reset confirmation for yesterday`() {
+        val confirmation = HudResetConfirmation()
+        confirmation.click("apple", TrackerMode.DAILY, 100, "2026-10-26")
+        assertFalse(confirmation.armed("apple", TrackerMode.DAILY, 200, "2026-10-27"))
+        assertFalse(confirmation.click("apple", TrackerMode.DAILY, 300, "2026-10-27"))
+    }
+
+    @Test fun `daily reset cannot be armed without a date`() {
+        val confirmation = HudResetConfirmation()
+        assertFalse(confirmation.click("apple", TrackerMode.DAILY, 100))
+        assertFalse(confirmation.click("apple", TrackerMode.DAILY, 200))
+        assertFalse(confirmation.armed("apple", TrackerMode.DAILY, 300))
+    }
+
     @Test fun `reset requires two clicks on the same profile and view`() {
         val confirmation = HudResetConfirmation()
         assertFalse(confirmation.click("apple",TrackerMode.SESSION,100))

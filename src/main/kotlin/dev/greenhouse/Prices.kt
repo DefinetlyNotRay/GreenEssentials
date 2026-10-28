@@ -17,8 +17,7 @@ internal object Prices {
     private val httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
     private var nextRefreshAt = 0L
     private var refreshPending = false
-    var prices: Map<String, Double> = emptyMap()
-        private set
+    private var book = PriceBook()
 
     var names: Map<String, String> = emptyMap()
         private set
@@ -26,13 +25,15 @@ internal object Prices {
     var status = "Prices not loaded"
         private set
 
-    private var npcPrices: Map<String, Double> = emptyMap()
-
-    fun parseMarket(products: JsonObject): Map<String, Double> = products.entrySet().associate { (id, item) ->
-        // Hypixel names this side sell_summary: it is the price for instantly selling into buy orders.
-        val orders = item.asJsonObject.getAsJsonArray("sell_summary")
-        id to (orders.firstOrNull()?.asJsonObject?.get("pricePerUnit")?.asDouble ?: 0.0)
-    }.filterValues { it >= 0 && it.isFinite() }
+    fun parseMarket(products: JsonObject, source: PriceSource = PriceSource.BAZAAR_INSTANT_SELL): Map<String, Double> {
+        require(source == PriceSource.BAZAAR_INSTANT_BUY || source == PriceSource.BAZAAR_INSTANT_SELL)
+        // Hypixel calls the offers used by instant buy buy_summary, and the bids sell_summary.
+        val side = if (source == PriceSource.BAZAAR_INSTANT_BUY) "buy_summary" else "sell_summary"
+        return products.entrySet().associate { (id, item) ->
+            val orders = item.asJsonObject.getAsJsonArray(side)
+            id to (orders?.firstOrNull()?.asJsonObject?.get("pricePerUnit")?.asDouble ?: 0.0)
+        }.filterValues { it >= 0 && it.isFinite() }
+    }
 
     fun idForName(name: String): String? = names[name.lowercase()] ?: Catalog.aliases[name.lowercase()]
 
@@ -59,20 +60,15 @@ internal object Prices {
         return id?.takeIf { it.isNotEmpty() } ?: idForName(stack.cleanName)
     }
 
-    fun price(id: String): Double? {
-        Storage.settings.priceOverrides[id]?.let { return it }
-        val direct = marketOrNpcPrice(id)
-        val derived = Catalog.units.entries
-            .filter { it.value.base == id }
-            .map { (formId, unit) -> marketOrNpcPrice(formId) / unit.amount }
-            .maxOrNull() ?: 0.0
-        return maxOf(direct, derived).takeIf { it > 0 && it.isFinite() }
-    }
+    fun price(id: String): Double? = priceAtSource(id, Storage.settings.priceSource)
 
-    private fun marketOrNpcPrice(id: String): Double = maxOf(prices[id] ?: 0.0, npcPrices[id] ?: 0.0)
+    fun priceAtSource(id: String, source: PriceSource): Double? = book.price(id, source, Storage.settings.priceOverrides)
+
+    fun autoPrice(id: String): Double? = book.price(id, PriceSource.AUTO, Storage.settings.priceOverrides)
 
     private data class PriceUpdate(
-        val market: Map<String, Double>,
+        val instantBuy: Map<String, Double>,
+        val instantSell: Map<String, Double>,
         val displayNames: Map<String, String>?,
         val npcPrices: Map<String, Double>?,
     )
@@ -87,7 +83,7 @@ internal object Prices {
                 Minecraft.getInstance().execute {
                     refreshPending = false
                     result.onSuccess(::applyPrices).onFailure {
-                        status = if (prices.isEmpty()) "Prices unavailable" else "Cached prices (refresh failed)"
+                        status = if (book.instantSell.isEmpty() && book.instantBuy.isEmpty()) "Prices unavailable" else "Cached prices (refresh failed)"
                     }
                 }
             }
@@ -95,7 +91,8 @@ internal object Prices {
 
     private fun fetchPrices(): PriceUpdate {
         val products = fetch("skyblock/bazaar").getAsJsonObject("products")
-        val market = parseMarket(products)
+        val instantBuy = parseMarket(products, PriceSource.BAZAAR_INSTANT_BUY)
+        val instantSell = parseMarket(products, PriceSource.BAZAAR_INSTANT_SELL)
         val items = if (names.isEmpty()) fetch("resources/skyblock/items").getAsJsonArray("items") else null
         val displayNames = items?.associate { item ->
             val data = item.asJsonObject
@@ -105,7 +102,7 @@ internal object Prices {
             val data = item.asJsonObject
             data["npc_sell_price"]?.asDouble?.let { value -> data["id"].asString to value }
         }?.toMap()
-        return PriceUpdate(market, displayNames, npcPrices)
+        return PriceUpdate(instantBuy, instantSell, displayNames, npcPrices)
     }
 
     private fun fetch(path: String): JsonObject {
@@ -120,9 +117,8 @@ internal object Prices {
     }
 
     private fun applyPrices(update: PriceUpdate) {
-        prices = update.market
+        book = PriceBook(update.instantBuy, update.instantSell, update.npcPrices ?: book.npc)
         update.displayNames?.let { names = it }
-        update.npcPrices?.let { npcPrices = it }
         status = "Bazaar / NPC prices"
     }
 }

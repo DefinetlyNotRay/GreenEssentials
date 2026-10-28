@@ -25,17 +25,26 @@ internal class HarvestLedger(private val admit: (String) -> Boolean = { false })
 
     private data class Credit(val id: String, var count: Long, val sack: Boolean, val expires: Long)
 
-    private data class Returned(val id: String, var inventory: Long, var sacks: Long, val expires: Long)
+    private data class Returned(
+        val id: String,
+        var inventory: Long,
+        var sacks: Long,
+        val expires: Long,
+        var notified: Boolean = false,
+        val onReturn: () -> Unit = {},
+        val key: String? = null,
+    )
 
     private val credits = mutableListOf<Credit>()
     private val returned = mutableListOf<Returned>()
 
-    fun ignoreReturn(id: String, count: Long = 1, now: Long = System.currentTimeMillis()) {
-        if (count > 0) returned.add(Returned(id, count, count, now + HarvestTiming.RETURN_CREDIT_MILLIS))
+    fun ignoreReturn(id: String, count: Long = 1, now: Long = System.currentTimeMillis(), onReturn: () -> Unit = {}, key: String? = null, duration: Long = HarvestTiming.RETURN_CREDIT_MILLIS) {
+        if (key != null && returned.any { it.key == key && it.expires >= now }) return
+        if (count > 0) returned.add(Returned(id, count, count, now + duration, onReturn = onReturn, key = key))
     }
 
-    fun finishSackReport() {
-        returned.clear()
+    fun expireReturns(now: Long) {
+        returned.removeIf { it.expires < now || it.inventory == 0L && it.sacks == 0L }
     }
 
     private fun removeReturns(id: String, count: Long, sack: Boolean): Long {
@@ -45,6 +54,10 @@ internal class HarvestLedger(private val admit: (String) -> Boolean = { false })
             .forEach { credit ->
                 val available = if (sack) credit.sacks else credit.inventory
                 val used = minOf(remaining, available)
+                if (used > 0 && !credit.notified) {
+                    credit.notified = true
+                    credit.onReturn()
+                }
                 if (sack) credit.sacks -= used else credit.inventory -= used
                 remaining -= used
             }
@@ -69,12 +82,16 @@ internal class HarvestLedger(private val admit: (String) -> Boolean = { false })
         }
     }
 
-    fun sack(id: String, count: Long, admission: (String) -> Boolean = admit): GainDecision {
+    fun sack(id: String, count: Long, returnCount: Long = count, admission: (String) -> Boolean = admit): GainDecision {
         val unit = Catalog.units[id] ?: return GainDecision("sack", id, count, 0, GainReason.UNSUPPORTED_ITEM)
-        if (count <= 0) return GainDecision("sack", unit.base, count, 0, GainReason.INVALID_AMOUNT)
+        if (count <= 0 && returnCount <= 0) return GainDecision("sack", unit.base, count, 0, GainReason.INVALID_AMOUNT)
 
         val observed = count * unit.amount
-        val gain = removeReturns(unit.base, observed.coerceAtLeast(0), true)
+        val gross = (returnCount * unit.amount).coerceAtLeast(0)
+        val excluded = gross - removeReturns(unit.base, gross, true)
+        // Removals in this report may already cancel some/all of the refund.
+        val removed = (gross - observed).coerceAtLeast(0)
+        val gain = (observed - (excluded - removed).coerceAtLeast(0)).coerceAtLeast(0)
         val allowed = gain > 0 && admission(unit.base)
         if (allowed) sacks[unit.base] = sacks.getOrDefault(unit.base, 0) + gain
         return GainDecision("sack", unit.base, observed, if (allowed) gain else 0, reason(gain, allowed))

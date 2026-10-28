@@ -57,6 +57,11 @@ internal object GreenhouseCommands {
             Tracker.setMode(TrackerMode.SESSION)
             1
         })
+        .then(literal("daily")
+            .executes { action { Tracker.showDay() } }
+            .then(argument("date", StringArgumentType.greedyString()).executes { context ->
+                action { Tracker.showRange(TrackerDateRange.parse(StringArgumentType.getString(context, "date"), Tracker.today)) }
+            }))
         .then(literal("alltime").executes {
             Tracker.setMode(TrackerMode.ALL_TIME)
             1
@@ -131,10 +136,11 @@ internal object GreenhouseCommands {
     }
 
     private fun resetCommand(): LiteralArgumentBuilder<FabricClientCommandSource> = literal("reset")
-        .executes { say("Reset ${Tracker.mode.label} totals with /greenhouse reset confirm. Layouts are retained.") }
+        .executes { say("Reset ${Tracker.viewLabel} totals with /greenhouse reset confirm. Layouts are retained.") }
         .then(literal("confirm").executes { action { Tracker.resetTotals(Tracker.mode) } })
         .then(literal("session").then(literal("confirm").executes { action { Tracker.resetTotals(TrackerMode.SESSION) } }))
         .then(literal("alltime").then(literal("confirm").executes { action { Tracker.resetTotals(TrackerMode.ALL_TIME) } }))
+        .then(literal("daily").then(literal("confirm").executes { action { Tracker.resetTotals(TrackerMode.DAILY) } }))
 
     private fun unloadLayout() {
         currentLayoutPlot()?.let { Storage.profile?.active?.remove(it.id) }
@@ -179,7 +185,7 @@ internal object GreenhouseCommands {
 
     private fun showItems(): Int {
         Tracker.flush()
-        val rows = TrackerDisplay.rows(Tracker.view().items, Prices::price, Prices::displayName, Storage.settings.compactCrops)
+        val rows = Tracker.rows()
         if (rows.isEmpty()) say("No harvested items tracked yet.")
         else
             rows.forEach { row ->
@@ -190,6 +196,6 @@ internal object GreenhouseCommands {
 
     private fun showHelp(): Int =
         say(
-            "/ge, /greenessentials, /greenhouse share all subcommands. /gelayouts opens layouts. /ge jellyshort controls Jellybean rendering. /ge profile <name>, capture <name>, import <name> (clipboard), importfile <file>, use/rotate/export/delete <name>, unload, target <mutation|none|auto>, toggle, overlay, price <id> <coins>, prices, hud <x> <y>, testplots <on|off>, debug, version, detect, items, stats, session, alltime, reset confirm"
+            "/ge, /greenessentials, /greenhouse share all subcommands. /gelayouts opens layouts. /ge jellyshort controls Jellybean rendering. /ge profile <name>, capture <name>, import <name> (clipboard), importfile <file>, use/rotate/export/delete <name>, unload, target <mutation|none|auto>, toggle, overlay, price <id> <coins>, prices, hud <x> <y>, testplots <on|off>, debug, version, detect, items, stats, session, daily [YYYY-MM-DD [to YYYY-MM-DD]], alltime, reset confirm"
         )
 }

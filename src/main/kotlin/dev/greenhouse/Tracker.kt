@@ -1,6 +1,7 @@
 package dev.greenhouse
 
 import java.util.Locale
+import java.time.LocalDate
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.player.LocalPlayer
@@ -34,34 +35,75 @@ internal object Tracker {
     private val journal = AttributionJournal()
     private val attribution = HarvestAttribution(record = journal::record)
     private val sessions = TrackerSessions()
+    private val days = TrackerDays(history = Storage.history)
+    private var selectedRange: TrackerDateRange? = null
     val mode get() = Storage.settings.trackerMode
+    val displayedRange get() = selectedRange ?: TrackerDateRange(days.today())
+    val today get() = days.today()
+    val viewLabel get() = if (mode == TrackerMode.DAILY) "Daily ${displayedRange.label}" else mode.label
 
-    fun view(): TrackerTotals =
-        if (mode == TrackerMode.SESSION) sessions.view(Storage.scope)
-        else TrackerTotals(Storage.profile?.items.orEmpty(), Storage.profile?.activeMillis ?: 0)
-
-    fun setMode(value: TrackerMode) {
-        flush()
-        Storage.settings.trackerMode = value
-        Storage.save()
-        say(
-            "Showing ${value.label} totals." +
-                if (value == TrackerMode.SESSION) " Session starts at game launch or your last session reset." else ""
-        )
+    fun view(): TrackerTotals = when (mode) {
+        TrackerMode.SESSION -> sessions.view(Storage.scope)
+        TrackerMode.DAILY -> days.viewRange(Storage.profile, displayedRange, Storage.settings.priceSource)
+        TrackerMode.ALL_TIME -> Storage.profile?.let { profile ->
+            TrackerTotals(profile.items, profile.activeMillis,
+                cost = profile.cost.value, unpricedCosts = profile.cost.unpriced,
+                harvestDays = days.allTimeHarvestDays(profile))
+        } ?: TrackerTotals(emptyMap(), 0)
     }
 
-    fun resetTotals(value: TrackerMode) {
+    fun rows(totals: TrackerTotals = view()): List<TrackerDisplay.Row> = TrackerDisplay.rows(
+        totals.items, { totals.price(it, Prices::price) }, Prices::displayName, Storage.settings.compactCrops,
+    )
+
+    fun cyclePriceSource() {
+        flush()
+        Storage.settings.priceSource = Storage.settings.priceSource.next()
+        Storage.save()
+    }
+
+    fun setMode(value: TrackerMode) {
+        if (value == TrackerMode.DAILY) {
+            showDay()
+            return
+        }
+        flush()
+        selectedRange = null
+        Storage.settings.trackerMode = value
+        Storage.save()
+    }
+
+    fun showDay(date: LocalDate = days.today()) = showRange(TrackerDateRange(date))
+
+    fun showRange(range: TrackerDateRange) {
+        require(!range.end.isAfter(days.today())) { "Choose today or earlier dates." }
+        val switchingMode = mode != TrackerMode.DAILY
+        flush()
+        selectedRange = range.takeUnless { it.start == days.today() && it.end == days.today() }
+        Storage.settings.trackerMode = TrackerMode.DAILY
+        if (switchingMode) Storage.save()
+    }
+
+    fun changeDay(offset: Long) = showRange(displayedRange.shift(offset))
+
+    fun resetTotals(value: TrackerMode, range: TrackerDateRange = displayedRange) {
         val profile = requireNotNull(Storage.profile) { "Select your profile first." }
         val scope = requireNotNull(Storage.scope)
         flush()
         resetRuntime()
-        if (value == TrackerMode.SESSION) sessions.reset(scope)
-        else {
-            profile.items.clear()
-            profile.activeMillis = 0
+        when (value) {
+            TrackerMode.SESSION -> sessions.reset(scope)
+            TrackerMode.DAILY -> days.resetRange(profile, range)
+            TrackerMode.ALL_TIME -> {
+                profile.items.clear()
+                profile.activeMillis = 0
+                profile.cost = CostTotal()
+                days.resetAllTimeHarvestDays(profile)
+            }
         }
         Storage.save()
-        say("Reset ${value.label} totals for this profile. Layouts retained.")
+        val label = if (value == TrackerMode.DAILY) "Daily ${range.label}" else value.label
+        say("Reset $label totals for this profile. Layouts retained.")
     }
 
     private var lastLevel: ClientLevel? = null
@@ -74,7 +116,59 @@ internal object Tracker {
     private var lastPestRewardAt = 0L
     private val seenDeaths = mutableSetOf<Int>()
 
-    fun returnedMutation(id: String) = attribution.returned(id)
+    fun plantedMutation(cell: String, id: String) {
+        val profile = Storage.profile ?: return
+        val scope = Storage.scope ?: return
+        profile.costs.plant(cell, id, Prices.autoPrice(id), days.today().toString(), System.currentTimeMillis())
+            .forEach { recordCost(profile, scope, it) }
+        trace("placement_cost", id)
+    }
+
+    fun placedMutationAt(cell: String): String? =
+        Storage.profile?.costs?.at(cell)?.id ?: Storage.profile?.manualMutations?.get(cell)
+
+    private fun confirmMutationReturn(profile: ProfileData, scope: String, token: String) {
+        val change = profile.costs.pickedUp(token) ?: return
+        val placement = change.placement
+        // A new plant may already occupy this cell when the old sack report arrives.
+        if (profile.costs.at(placement.cell) == null && profile.manualMutations[placement.cell] == placement.id) {
+            profile.manualMutations.remove(placement.cell)
+        }
+        recordCost(profile, scope, change)
+        trace("placement_cost_refunded", placement.id)
+    }
+
+    fun expectMutationReturn(cell: String, id: String): String? {
+        val profile = Storage.profile
+        val scope = Storage.scope
+        val placement = profile?.costs?.find(cell, id)
+        attribution.returned(id, key = placement?.token ?: "legacy:$cell") {
+            if (placement != null && scope != null) {
+                confirmMutationReturn(profile, scope, placement.token)
+            }
+        }
+        return placement?.token
+    }
+
+    fun removedMutation(token: String?) {
+        val profile = Storage.profile ?: return
+        val scope = Storage.scope ?: return
+        if (token != null) profile.costs.removed(token, System.currentTimeMillis())?.let { recordCost(profile, scope, it) }
+    }
+
+    private fun recordCost(profile: ProfileData, scope: String, change: CostChange) {
+        val placement = change.placement
+        val date = LocalDate.parse(placement.day)
+        if (change.refund) {
+            profile.cost.refund(placement.price, placement.allGeneration)
+            days.refundCost(profile, date, placement.price, placement.dayGeneration)
+            sessions.refundCost(scope, placement.price, placement.sessionGeneration)
+        } else {
+            placement.allGeneration = profile.cost.charge(placement.price)
+            placement.dayGeneration = days.recordCost(profile, date, placement.price)
+            placement.sessionGeneration = sessions.recordCost(scope, placement.price)
+        }
+    }
 
     fun confirmedHarvest(id: String) = attribution.harvested(id)
 
@@ -89,6 +183,18 @@ internal object Tracker {
     fun resetRuntime(reason: String = "user_or_context_reset") {
         HarvestSignals.reset()
         attribution.reset(reason)
+        val now = System.currentTimeMillis()
+        val profile = Storage.profile
+        val scope = Storage.scope
+        if (profile != null && scope != null) {
+            val costs = profile.costs
+            costs.expire(now)
+            costs.placements.filter { it.removed }.forEach { placement ->
+                attribution.returned(placement.id, key = placement.token, duration = placement.returnUntil - now) {
+                    confirmMutationReturn(profile, scope, placement.token)
+                }
+            }
+        }
         wasEligible = false
         seenDeaths.clear()
         Layouts.clear()
@@ -121,6 +227,7 @@ internal object Tracker {
     fun tick() {
         val client = Minecraft.getInstance()
         val now = System.currentTimeMillis()
+        days.rollOver(now, ::flush)
         val elapsed = (now - lastTickAt).coerceIn(0, MAX_TICK_ELAPSED_MILLIS)
         lastTickAt = now
         if (client.level !== lastLevel) {
@@ -136,9 +243,10 @@ internal object Tracker {
         val level = client.level ?: return
         if (++ticks % CONTEXT_REFRESH_TICKS == 0) refreshContext()
         HarvestSignals.tick()
+        Storage.profile?.costs?.expire(now)
         val eligible = Storage.settings.enabled && Storage.profile != null && currentPlot() != null &&
             client.currentScreen == null && now - lastPestRewardAt > PEST_REWARD_COOLDOWN_MILLIS
-        recordFarmingTime(eligible, elapsed)
+        recordFarmingTime(eligible, elapsed, now)
         attribution.snapshot(inventorySnapshot(player), eligible && wasEligible)
         if (eligible) observeMutationDeaths(level, player)
         wasEligible = eligible
@@ -161,9 +269,12 @@ internal object Tracker {
         if (inGreenhouse()) Prices.refresh()
     }
 
-    private fun recordFarmingTime(eligible: Boolean, elapsed: Long) {
+    private fun recordFarmingTime(eligible: Boolean, elapsed: Long, now: Long) {
         if (eligible && wasEligible && HarvestSignals.active()) {
-            Storage.profile?.let { it.activeMillis += elapsed }
+            Storage.profile?.let { profile ->
+                profile.activeMillis += elapsed
+                days.addTime(profile, now - elapsed, now)
+            }
             Storage.scope?.let { sessions.addTime(it, elapsed) }
         }
     }
@@ -195,9 +306,11 @@ internal object Tracker {
         val profile = Storage.profile ?: return
         gains.forEach { (id, count) -> profile.items[id] = profile.items.getOrDefault(id, 0) + count }
         Storage.scope?.let { sessions.record(it, gains) }
+        days.recordPrices(profile, days.recordingDay, gains, Prices::priceAtSource)
     }
 
     fun chat(message: Component) {
+        days.rollOver(System.currentTimeMillis(), ::flush)
         HarvestSignals.tick()
         val text = clean(message.string)
         chatProfilePattern.find(text)?.let {
@@ -237,7 +350,8 @@ internal object Tracker {
             trace("sack_report_rejected", reason = "no_detailed_hover")
             return
         }
-        attribution.sackReport(SackReport.parse(hovers, Prices::idForName), eligible = true)
+        attribution.sackReport(SackReport.parse(hovers, Prices::idForName), eligible = true,
+            additions = SackReport.added(hovers, Prices::idForName))
     }
 
     private fun mutationMob(name: String): String? {
@@ -253,9 +367,9 @@ internal object Tracker {
         if (Storage.profile == null) return "Choose a profile to track harvests"
         flush()
         val totals = view()
-        val value = totals.items.entries.sumOf { (id, count) -> (Prices.price(id) ?: 0.0) * count }
-        val unknown = totals.items.keys.count { Prices.price(it) == null }
-        return "${mode.label}: ${number(value)} coins" + if (unknown > 0) " · $unknown unpriced" else ""
+        val value = totals.value(Prices::price)
+        val unknown = totals.unpricedCount(Prices::price) + totals.unpricedCosts
+        return "$viewLabel: ${number(value)} coins · Cost: ${number(totals.cost)} · Net profit: ${number(value - totals.cost)}" + if (unknown > 0) " · $unknown unpriced" else ""
     }
 
     fun number(value: Double) = String.format(Locale.US, "%,.0f", value)

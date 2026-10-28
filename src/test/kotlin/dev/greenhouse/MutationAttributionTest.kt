@@ -60,8 +60,8 @@ class MutationAttributionTest {
     @Test fun `net zero placement and pickup does not suppress a future legitimate harvest`() {
         val ledger=HarvestLedger { true }
         ledger.ignoreReturn("BLASTBERRY",now=0)
-        // A placement and its refund may cancel to zero in the same sack report.
-        ledger.finishSackReport()
+        // A placement and its refund may cancel to zero; gross additions still expose the return.
+        ledger.sack("BLASTBERRY",0,returnCount=1)
         ledger.sack("BLASTBERRY",1)
         assertEquals(mapOf("BLASTBERRY" to 1L),ledger.flush(1000))
     }

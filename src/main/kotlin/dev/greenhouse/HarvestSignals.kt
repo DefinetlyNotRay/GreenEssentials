@@ -15,6 +15,9 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.level.block.Blocks
 
 internal object HarvestSignals {
+    // Let replacement model entities arrive before interpreting disappearance as removal.
+    private const val MODEL_REMOVAL_SETTLE_MILLIS = 150L
+
     private data class Pending(
         val id: String,
         val signature: String,
@@ -24,10 +27,21 @@ internal object HarvestSignals {
         val expires: Long,
         val cell: String,
         val manual: Boolean,
+        val returnToken: String? = null,
+        var absentSince: Long = 0,
     )
 
     private val pending = mutableMapOf<String, Pending>()
     private val placements = PlacementHistory()
+    private val returnWatches = mutableMapOf<String, Pair<String?, Long>>()
+
+    private fun watchReturn(cell: String, id: String): String? {
+        val now = System.currentTimeMillis()
+        returnWatches[cell]?.takeIf { it.second >= now }?.let { return it.first }
+        val token = Tracker.expectMutationReturn(cell, id)
+        returnWatches[cell] = token to (now + HarvestTiming.RETURN_CREDIT_MILLIS)
+        return token
+    }
     private var wasAvailable = false
 
     private fun available(): Boolean =
@@ -41,15 +55,27 @@ internal object HarvestSignals {
     fun reset() {
         pending.clear()
         placements.clear()
+        returnWatches.clear()
         wasAvailable = false
     }
 
     private fun confirm(id: String) = Tracker.confirmedHarvest(id)
 
+    /** Planted mutation identity survives changes from head models into crop blocks. */
+    internal fun blockTarget(placedId: String?, isCropHead: Boolean, detect: () -> String?): String? =
+        placedId ?: if (isCropHead) detect() else null
+
     fun register() {
         ClientPlayerBlockBreakEvents.AFTER.register { level, _, position, state ->
             if (level !== Minecraft.getInstance().level || !available() || !inside(LorenzVec(position.x, position.y, position.z)))
                 return@register
+            val key = cell(LorenzVec(position.x, position.y, position.z))
+            val placedId = Tracker.placedMutationAt(key)
+            if (placedId != null) {
+                watchReturn(key, placedId)
+                Tracker.trace("planted_block_broken", placedId)
+                return@register
+            }
             val id =
                 when (state.block) {
                     Blocks.WHEAT -> "WHEAT"
@@ -127,7 +153,7 @@ internal object HarvestSignals {
 
     private fun cell(position: LorenzVec) = "${currentPlot()?.id}:${floor(position.x).toInt()}:${floor(position.z).toInt()}"
 
-    private fun isManual(cell: String, id: String) = Storage.profile?.manualMutations?.get(cell) == id
+    private fun isManual(cell: String, id: String) = Tracker.placedMutationAt(cell) == id
 
     private fun modelId(entity: Entity): String? =
         when (entity) {
@@ -161,15 +187,13 @@ internal object HarvestSignals {
         val location = LorenzVec(position.x, position.y, position.z)
         if (!inside(location)) return
         val block = location.getBlockStateAt().block
-        if (block != Blocks.PLAYER_HEAD && block != Blocks.PLAYER_WALL_HEAD) {
-            Tracker.trace("ignored_block_target", reason = "not_a_crop_head")
-            return
-        }
-        val id =
+        val isCropHead = block == Blocks.PLAYER_HEAD || block == Blocks.PLAYER_WALL_HEAD
+        val id = blockTarget(Tracker.placedMutationAt(cell(location)), isCropHead) {
             getSkullOwnerAt(location)?.let(GreenhouseMutation::fromSkullOwner)?.internalId
                 ?: GreenhouseCropScanner.skyShardsCropIdAt(location)?.let(::baseCrop)
+        }
         if (id == null) {
-            Tracker.trace("ignored_block_target", reason = "unrecognized_crop_head")
+            Tracker.trace("ignored_block_target", reason = if (isCropHead) "unrecognized_crop_head" else "not_a_crop_head")
             return
         }
         Tracker.trace("model_observed", id, "block")
@@ -183,6 +207,7 @@ internal object HarvestSignals {
                 System.currentTimeMillis() + 2000,
                 cell(location),
                 isManual(cell(location), id),
+                if (isManual(cell(location), id)) watchReturn(cell(location), id) else null,
             )
     }
 
@@ -202,12 +227,8 @@ internal object HarvestSignals {
 
     private fun observe(entity: Entity) {
         if (!available() || !inside(entity.getLorenzVec())) return
-        val id =
-            when (entity) {
-                is ArmorStand -> itemHarvestId(entity.getStandHelmet()) ?: itemHarvestId(entity.getHandItem())
-                is Display.ItemDisplay -> itemHarvestId(entity.itemStack)
-                else -> null
-            } ?: GreenhouseMutation.fromName(entity.name.string)?.internalId
+        val id = Tracker.placedMutationAt(cell(entity.getLorenzVec())) ?: modelId(entity)
+            ?: GreenhouseMutation.fromName(entity.name.string)?.internalId
         if (id == null) {
             Tracker.trace("ignored_entity_target", reason = entity.type.toString())
             return
@@ -224,6 +245,7 @@ internal object HarvestSignals {
                 System.currentTimeMillis() + 2000,
                 cell(entity.getLorenzVec()),
                 isManual(cell(entity.getLorenzVec()), id),
+                if (isManual(cell(entity.getLorenzVec()), id)) watchReturn(cell(entity.getLorenzVec()), id) else null,
             )
     }
 
@@ -245,7 +267,12 @@ internal object HarvestSignals {
                 val id = modelId(entity) ?: return@forEach
                 models.getOrPut(cell(entity.getLorenzVec())) { mutableMapOf() }.getOrPut(id) { mutableSetOf() }.add(entity.id)
             }
-            Storage.profile?.manualMutations?.let { placements.confirm(models, it, now) }
+            Storage.profile?.manualMutations?.let { placed ->
+                placements.confirm(models, placed, now) { cell, id ->
+                    returnWatches.remove(cell)
+                    Tracker.plantedMutation(cell, id)
+                }
+            }
         }
         pending.entries.removeIf { (_, event) ->
             if (now > event.expires || player.getLorenzVec().distanceSq(event.position) > 100) {
@@ -255,12 +282,26 @@ internal object HarvestSignals {
                 val changed =
                     event.entity?.let { it.isRemoved || signature(it) != event.signature }
                         ?: (event.block?.let(::blockSignature) != event.signature)
+                val manual = event.manual || isManual(event.cell, event.id)
+                if (changed && manual) {
+                    // Growth can update/replace a model. Only disappearance of the plant is removal.
+                    val present = Minecraft.getInstance().level?.entitiesForRendering()?.any {
+                        cell(it.getLorenzVec()) == event.cell && modelId(it) == event.id
+                    } == true || (event.block != null && blockSignature(event.block) == event.signature)
+                    if (present) {
+                        event.absentSince = 0
+                        return@removeIf false
+                    }
+                    if (event.absentSince == 0L) event.absentSince = now
+                    if (now - event.absentSince < MODEL_REMOVAL_SETTLE_MILLIS) return@removeIf false
+                }
                 if (changed) {
-                    if (event.manual || isManual(event.cell, event.id)) {
+                    if (manual) {
                         val placed = Storage.profile?.manualMutations
                         if (placed?.get(event.cell) == event.id) {
                             placed.remove(event.cell)
-                            Tracker.returnedMutation(event.id)
+                            Tracker.removedMutation(event.returnToken)
+                            returnWatches.remove(event.cell)
                         }
                     } else confirm(event.id)
                 }

@@ -33,6 +33,7 @@
     "issues": "https://github.com/DefinetlyNotRay/GreenEssentials/issues"
   },
   "mixins": [
+    "greenessentials-hud.mixins.json",
     "greenessentials-jellyshort.mixins.json"
   ],
   "breaks": {
