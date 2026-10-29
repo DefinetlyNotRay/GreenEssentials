@@ -81,7 +81,7 @@ class SpawningSurfacesTest {
         assertEquals(36,SpawningSurfaces.expected(blueprint,middle).size)
     }
     @Test fun `previews use partial opacity`() {
-        assertTrue((GhostGeometry.HEAD_COLOR ushr 24) in 1..254)
-        assertTrue((GhostGeometry.BLOCK_COLOR ushr 24) in 1..254)
+        // Rendering reads the saved setting at runtime; tests need no Fabric config directory.
+        assertTrue((Appearance.ghostColor(Settings().layoutHologramOpacity) ushr 24) in 1..254)
     }
 }

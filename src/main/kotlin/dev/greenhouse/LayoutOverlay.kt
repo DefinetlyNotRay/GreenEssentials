@@ -39,7 +39,7 @@ internal object LayoutOverlay {
                 }
             }
             if (!Storage.settings.overlay) return@register
-            Layouts.missingSurfaces.forEach { missing ->
+            if (Storage.settings.layoutSurfaces && Storage.settings.layoutHologramOpacity > 0) Layouts.missingSurfaces.forEach { missing ->
                 val position = missing.position
                 stack.pushPose()
                 // A slight expansion also makes wrong existing soil visible as a replacement ghost.
@@ -56,7 +56,8 @@ internal object LayoutOverlay {
                 val size = missing.size.toDouble()
                 stack.pushPose()
                 stack.translate(x, y, z)
-                ctx.submitNodeCollector().submitCustomGeometry(stack, RenderTypes.debugFilledBox()) { pose, vertices ->
+                val highlightColor = Appearance.color(Storage.settings.layoutHighlightColor)
+                if (Storage.settings.layoutHighlight && highlightColor ushr 24 > 0) ctx.submitNodeCollector().submitCustomGeometry(stack, RenderTypes.debugFilledBox()) { pose, vertices ->
                     // Six faces, with the planting footprint shown as a translucent ghost box.
                     val corners =
                         arrayOf(
@@ -80,7 +81,7 @@ internal object LayoutOverlay {
                         .forEach { face ->
                             face.forEach { index ->
                                 val c = corners[index]
-                                vertices.addVertex(pose, c[0].toFloat(), c[1].toFloat(), c[2].toFloat()).setColor(80, 230, 140, 75)
+                                vertices.addVertex(pose, c[0].toFloat(), c[1].toFloat(), c[2].toFloat()).setColor(highlightColor)
                             }
                         }
                 }
@@ -95,8 +96,14 @@ internal object LayoutOverlay {
                 // Skull geometry starts at its local origin; align it with the actual/preview soil top.
                 stack.translate(size / 2, supportTop - 1.0, size / 2)
                 stack.scale(1.2f, -1.2f, -1.2f)
-                GhostGeometry.head(missing.cropId.uppercase(), stack, ctx.submitNodeCollector())
+                if (Storage.settings.layoutHolograms && Storage.settings.layoutHologramOpacity > 0) {
+                    GhostGeometry.head(missing.cropId.uppercase(), stack, ctx.submitNodeCollector())
+                }
                 stack.popPose()
+                if (!Storage.settings.layoutLabels) {
+                    stack.popPose()
+                    return@forEach
+                }
                 stack.translate(size / 2, 1.0, size / 2)
                 rotateLabel(stack, camera.orientation)
                 stack.scale(0.018f, -0.018f, 0.018f)

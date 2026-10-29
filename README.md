@@ -9,6 +9,7 @@ A client-side Fabric mod for Hypixel SkyBlock's Greenhouse.
 - **Harvest tracker** : item breakdowns, estimated profit, and separate Session, Daily, and All-time totals for each profile. Daily history keeps the values recorded while tracking.
 - **Cost** : confirmed mutation spawner placements reduce net profit. Returning a removed spawner to inventory or sack reverses its original value; returns never count as harvest income. Costs use the tracker price at planting and follow Session, Daily, and All-time views.
 - **Customizable HUD** : move and resize the tracker, toggle item icons, and display crops in compacted forms.
+- **Appearance settings** : under `/ge` → Layouts, customize highlight color and transparency, toggle crop holograms, crop labels, and spawning surface ghosts, and adjust hologram opacity. Under GUI, customize the tracker's charcoal panel and gold accents; the color picker's alpha slider controls transparency.
 - **JellyShort** : shorten or hide jellybean sugar cane model while keeping their hitboxes.
 - **Layout sharing** : supports SkyShards, SkyMutations, and SkyLayouts links, plus portable layout files.
 

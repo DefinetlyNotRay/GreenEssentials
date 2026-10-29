@@ -16,8 +16,8 @@ import net.minecraft.world.level.block.SkullBlock
 
 /** Explicit alpha and translucent pipelines; never mutate shared item models or world blocks. */
 internal object GhostGeometry {
-    const val HEAD_COLOR: Int = 0x80ffffff.toInt()
-    const val BLOCK_COLOR: Int = 0x70ffffff
+    val HEAD_COLOR: Int get() = Appearance.ghostColor(Storage.settings.layoutHologramOpacity)
+    val BLOCK_COLOR: Int get() = Appearance.ghostColor(Storage.settings.layoutHologramOpacity)
     private var entityModels: Any? = null
     private var headModel: SkullModelBase? = null
 

@@ -152,6 +152,14 @@ class HudOptions {
     @ConfigOption(name = "Background", desc = "Draw a dark panel behind the tracker.")
     @ConfigEditorBoolean
     val background = setting(Storage.settings.hudBackground) { Storage.settings.hudBackground = it }
+    @JvmField @Expose
+    @ConfigOption(name = "Panel Color", desc = "Tracker background color. Use the color picker's alpha slider to adjust transparency.")
+    @ConfigEditorColour
+    val backgroundColor = setting(Storage.settings.hudBackgroundColor) { Storage.settings.hudBackgroundColor = it }
+    @JvmField @Expose
+    @ConfigOption(name = "Accent Color", desc = "Tracker title, selected tab border, and scrollbar. Defaults to Minecraft gold.")
+    @ConfigEditorColour
+    val accentColor = setting(Storage.settings.hudAccentColor) { Storage.settings.hudAccentColor = it }
     @JvmField
     @Expose
     @ConfigOption(name = "Item Icons", desc = "Show crop and mutation icons beside item counts.")
@@ -190,6 +198,36 @@ class TrackerOptions {
 }
 
 class LayoutOptions {
+    @JvmField @Expose
+    @ConfigOption(name = "Highlights", desc = "Show colored planting footprints for missing crops.")
+    @ConfigEditorBoolean
+    val highlights = setting(Storage.settings.layoutHighlight) { Storage.settings.layoutHighlight = it }
+
+    @JvmField @Expose
+    @ConfigOption(name = "Highlight Color", desc = "Planting footprint color. Use the color picker's alpha slider to adjust transparency (0 is invisible).")
+    @ConfigEditorColour
+    val highlightColor = setting(Storage.settings.layoutHighlightColor) { Storage.settings.layoutHighlightColor = it }
+
+    @JvmField @Expose
+    @ConfigOption(name = "Crop Holograms", desc = "Show ghost crop models at missing planting positions.")
+    @ConfigEditorBoolean
+    val holograms = setting(Storage.settings.layoutHolograms) { Storage.settings.layoutHolograms = it }
+
+    @JvmField @Expose
+    @ConfigOption(name = "Hologram Opacity", desc = "Opacity of crop and spawning surface ghosts: 0% invisible, 100% opaque.")
+    @ConfigEditorSlider(minValue = 0f, maxValue = 100f, minStep = 1f)
+    val hologramOpacity = setting(Storage.settings.layoutHologramOpacity) { Storage.settings.layoutHologramOpacity = it }
+
+    @JvmField @Expose
+    @ConfigOption(name = "Crop Labels", desc = "Show crop names above missing planting positions.")
+    @ConfigEditorBoolean
+    val labels = setting(Storage.settings.layoutLabels) { Storage.settings.layoutLabels = it }
+
+    @JvmField @Expose
+    @ConfigOption(name = "Surface Hologram", desc = "Show ghost blocks for missing or incorrect spawning surfaces.")
+    @ConfigEditorBoolean
+    val surfaces = setting(Storage.settings.layoutSurfaces) { Storage.settings.layoutSurfaces = it }
+
     @JvmField
     @Expose
     @ConfigOption(name = "Schematic Overlay", desc = "Highlight missing crops in the active layout.")

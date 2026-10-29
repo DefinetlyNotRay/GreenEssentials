@@ -307,10 +307,10 @@ internal object TrackerHud {
         graphics.pose().scale(scale, scale)
         try {
             if (Storage.settings.hudBackground) {
-                graphics.fill(x - 4, y - 4, x + width + 4, y + height, 0x990c1510.toInt())
+                graphics.fill(x - 4, y - 4, x + width + 4, y + height, Appearance.color(Storage.settings.hudBackgroundColor))
             }
             val font = client.font
-            graphics.text(font, "§6§lGreenEssentials Tracker §7[${Tracker.mode.label}]", x, y, -1)
+            graphics.text(font, "§lGreenEssentials Tracker §7[${Tracker.mode.label}]", x, y, Appearance.color(Storage.settings.hudAccentColor))
             if (daily) {
                 val area = Bounds((x + 22).toDouble(), (y + 15).toDouble(), (width - 90).toDouble(), BUTTON_HEIGHT.toDouble())
                 if (interactive) dateBounds = area
@@ -344,7 +344,7 @@ internal object TrackerHud {
                 if (isSource && interactive) priceSourceBounds = area
                 graphics.text(font, line, x, lineY, -1)
                 if (hovered) {
-                    if (isSource) graphics.fill(x, lineY + 9, x + font.width(line), lineY + 10, 0xff80c497.toInt())
+                    if (isSource) graphics.fill(x, lineY + 9, x + font.width(line), lineY + 10, Appearance.color(Storage.settings.hudAccentColor))
                     val tooltip = if (isSource) priceSourceTooltip() else
                         "Net profit for this view divided by days with harvests. Costs on non-harvest days still reduce the average. Unpriced items are excluded from value."
                     graphics.setTooltipForNextFrame(Component.literal(tooltip), mouseX, mouseY)
@@ -374,8 +374,8 @@ internal object TrackerHud {
         val trackHeight = itemScroll.visibleRows * ROW_HEIGHT
         val thumbHeight = (trackHeight * itemScroll.visibleRows / itemScroll.totalRows).coerceAtLeast(8)
         val thumbY = y + (trackHeight - thumbHeight) * itemScroll.firstRow / itemScroll.maximumFirstRow
-        graphics.fill(x, y, x + 3, y + trackHeight, 0xff252b27.toInt())
-        graphics.fill(x, thumbY, x + 3, thumbY + thumbHeight, 0xff80c497.toInt())
+        graphics.fill(x, y, x + 3, y + trackHeight, 0xff292929.toInt())
+        graphics.fill(x, thumbY, x + 3, thumbY + thumbHeight, Appearance.color(Storage.settings.hudAccentColor))
     }
 
     private fun renderRow(graphics: GuiGraphicsExtractor, row: TrackerDisplay.Row, x: Int, y: Int, width: Int) {
@@ -447,11 +447,11 @@ internal object TrackerHud {
             when {
                 armed -> 0xff752b2b.toInt()
                 hovered -> 0xff505050.toInt()
-                selected -> 0xff304e37.toInt()
-                else -> 0xff252b27.toInt()
+                selected -> 0xff414141.toInt()
+                else -> 0xff292929.toInt()
             }
         graphics.fill(button.x, button.y, button.x + button.width, button.y + BUTTON_HEIGHT, background)
-        if (selected) graphics.outline(button.x, button.y, button.width, BUTTON_HEIGHT, 0xff80c497.toInt())
+        if (selected) graphics.outline(button.x, button.y, button.width, BUTTON_HEIGHT, Appearance.color(Storage.settings.hudAccentColor))
         graphics.text(
             font,
             label,
