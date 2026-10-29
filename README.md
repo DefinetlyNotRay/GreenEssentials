@@ -3,6 +3,8 @@
 A client-side Fabric mod for Hypixel SkyBlock's Greenhouse.  
 ( Please let me know if you want any features added or any bugs that may occur )
 
+Use the **26.1** JAR for Minecraft **26.1 or 26.1.2**. Minecraft 26.2 and 26.3 have separate JARs.
+
 ## Features
 
 - **Layout library** : capture, import, export, rotate, and preview Greenhouse layouts, with overlays for missing plants and spawning surfaces.

@@ -25,6 +25,12 @@ internal object GreenhouseLayoutCapture {
         GreenhouseGridScanner.scanCropCells(plot, mutations).forEach { cell ->
             add(GreenHouseStorage.BlueprintCellStorage(cell.cropId, cell.row, cell.column))
         }
+        for (row in 0..9) {
+            for (column in 0..9) {
+                val position = LorenzVec(middle.x + column - 5.0, 74.0, middle.z + row - 5.0)
+                LayoutItems.idAt(position)?.let { add(GreenHouseStorage.BlueprintCellStorage(it, row, column)) }
+            }
+        }
         val level = net.minecraft.client.Minecraft.getInstance().level
         if (level != null) {
             val occupied = buildSet {

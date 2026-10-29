@@ -52,14 +52,15 @@ internal object Layouts {
         val plot = requireNotNull(currentLayoutPlot()) { "Stand in a Greenhouse plot." }
         require(GreenhouseGridScanner.isLoaded(plot)) { "Wait for the entire planting grid to load." }
         val scan = GreenhouseGridScanner.scan(plot)
-        require(scan.mutations.isNotEmpty() || scan.crops.isNotEmpty()) { "No crops or mutations found in the planting grid." }
+        val capturedCells = GreenhouseLayoutCapture.captureCells(plot, scan.mutations)
+        require(scan.mutations.isNotEmpty() || capturedCells.isNotEmpty()) { "No crops or layout ingredients found in the planting grid." }
         val blueprint = GreenHouseStorage.MutationBlueprintStorage(
             mutations = scan.mutations.mapTo(mutableListOf()) { detected ->
                 GreenHouseStorage.MutationPlacementStorage(
                     detected.mutation.internalId, detected.position - plot.middle, "", detected.mutation.size,
                 )
             },
-            importedCells = GreenhouseLayoutCapture.captureCells(plot, scan.mutations).toMutableList(),
+            importedCells = capturedCells.toMutableList(),
         )
         put(name, blueprint, overwrite)
     }
@@ -256,14 +257,27 @@ internal object Layouts {
                     add(Missing(mutation.internalId.lowercase(), corner, mutation.size))
                 }
             }
-            for (cell in blueprint.importedCells) {
-                if (cell.target || GreenhouseMutation.fromSkyShardsId(cell.cropId) != null) continue
-                if (neededDevourerInputs != null) continue
-                val category = CropCategory.fromCropId(cell.cropId) ?: continue
-                val position = LorenzVec(plot.middle.x + cell.column - 5, 74.0, plot.middle.z + cell.row - 5)
-                if (GreenhouseCropScanner.isMissingCrop(position, category)) add(Missing(cell.cropId, position, 1))
+            if (neededDevourerInputs == null) {
+                addAll(missingImportedPlants(blueprint.importedCells, plot.middle) { cropId, position ->
+                    if (LayoutItems.supports(cropId)) {
+                        LayoutItems.isMissing(cropId, position)
+                    } else {
+                        CropCategory.fromCropId(cropId)?.let { GreenhouseCropScanner.isMissingCrop(position, it) } ?: false
+                    }
+                })
             }
         }
+    }
+
+    internal fun missingImportedPlants(
+        cells: List<GreenHouseStorage.BlueprintCellStorage>,
+        middle: LorenzVec,
+        isMissing: (String, LorenzVec) -> Boolean,
+    ): List<Missing> = cells.mapNotNull { cell ->
+        if (cell.target || GreenhouseMutation.fromSkyShardsId(cell.cropId) != null ||
+            SpawningSurfaces.Surface.fromId(cell.cropId) != null) return@mapNotNull null
+        val position = LorenzVec(middle.x + cell.column - 5, 74.0, middle.z + cell.row - 5)
+        if (isMissing(cell.cropId, position)) Missing(cell.cropId, position, 1) else null
     }
 
     fun matchesAnchor(actual: LorenzVec, expected: LorenzVec, size: Int): Boolean {

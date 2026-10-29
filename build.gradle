@@ -6,7 +6,17 @@ plugins {
 version = '0.2.0'
 group = 'dev.greenhouse'
 repositories { mavenLocal(); maven { url = 'https://maven.notenoughupdates.org/releases/' }; mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
-def mc = providers.gradleProperty('minecraft_version').getOrElse('26.1.2')
+def buildMc = providers.gradleProperty('minecraft_version').getOrElse('26.1')
+// Verify the already-built 26.1 artifact against 26.1.2 without publishing another JAR.
+def compatibilityMc = providers.gradleProperty('compatibility_version').orNull
+if (!(buildMc in ['26.1', '26.2', '26.3'])) {
+    throw new GradleException('Use minecraft_version=26.1, 26.2, or 26.3; the 26.1 JAR also supports 26.1.2')
+}
+if (compatibilityMc != null && !(buildMc == '26.1' && compatibilityMc == '26.1.2')) {
+    throw new GradleException('compatibility_version is only supported for checking the 26.1 JAR against 26.1.2')
+}
+def mc = compatibilityMc ?: buildMc
+def supportedMinecraft = buildMc == '26.1' ? ['26.1', '26.1.2'] : buildMc
 def targets = [
     '26.1': [api: '0.145.1+26.1', moul: '26.1', config: '4.7.2'],
     '26.1.2': [api: '0.155.2+26.1.2', moul: '26.1', config: '4.7.2'],
@@ -37,20 +47,28 @@ java { toolchain.languageVersion = JavaLanguageVersion.of(25); withSourcesJar() 
 kotlin { jvmToolchain(25) }
 test { useJUnitPlatform() }
 processResources {
-    inputs.property 'minecraft_version', mc
+    inputs.property 'minecraft_versions', supportedMinecraft
     inputs.property 'mod_version', project.version
     if (mc == '26.3') {
         exclude { it.file == file('src/main/resources/greenessentials.accesswidener') }
         from('src/compat/26.3/resources')
     }
-    filesMatching('fabric.mod.json') { expand(minecraft_version: mc, mod_version: project.version) }
+    filesMatching('fabric.mod.json') {
+        expand(minecraft_version: buildMc, mod_version: project.version)
+        filter { line ->
+            line.replace('"minecraft": "' + buildMc + '"', '"minecraft": ' + groovy.json.JsonOutput.toJson(supportedMinecraft))
+        }
+    }
 }
 tasks.named('jar') {
     archiveClassifier = 'nodeps'
     destinationDirectory = layout.buildDirectory.dir('badjars')
 }
 tasks.named('shadowJar') {
-    archiveFileName = "greenessentials-${project.version}-mc${mc}.jar"
+    archiveFileName = "greenessentials-${project.version}-mc${buildMc}.jar"
+    doFirst {
+        if (compatibilityMc != null) throw new GradleException('Run verifyDistribution alone in compatibility mode; build the 26.1 JAR first')
+    }
     configurations = [project.configurations.shaded]
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     mergeServiceFiles()
@@ -81,10 +99,11 @@ def methodDescriptors = { byte[] bytes ->
 
 // Check the installable shaded artifact, not just intermediate compiler output.
 tasks.register('verifyDistribution') {
-    dependsOn tasks.named('shadowJar')
-    inputs.file(tasks.named('shadowJar').flatMap { it.archiveFile })
+    if (compatibilityMc == null) dependsOn tasks.named('shadowJar')
+    def distributionFile = layout.buildDirectory.file("libs/greenessentials-${project.version}-mc${buildMc}.jar")
+    inputs.file(distributionFile)
     doLast {
-        def archive = tasks.named('shadowJar').get().archiveFile.get().asFile
+        def archive = distributionFile.get().asFile
         new java.util.zip.ZipFile(archive).withCloseable { zip ->
             def required = [
                 'fabric.mod.json', 'greenessentials.accesswidener',
@@ -114,6 +133,83 @@ tasks.register('verifyDistribution') {
                 new java.util.zip.ZipFile(candidate).withCloseable { it.getEntry(targetClass) != null }
             }
             if (minecraftJar == null) throw new GradleException('Could not locate Minecraft for render-hook validation')
+            // Check symbolic references in the shipped bytecode, including bundled MoulConfig.
+            // In compatibility mode these resolve against 26.1.2 while the JAR remains built for 26.1.
+            def dependencies = sourceSets.main.compileClasspath.files.findAll {
+                it.isFile() && it.name.endsWith('.jar')
+            }.collect { new java.util.zip.ZipFile(it) }
+            try {
+                def classFiles = [:]
+                dependencies.each { dependency ->
+                    dependency.entries().each { entry ->
+                        if (entry.name.endsWith('.class')) classFiles.putIfAbsent(entry.name, dependency)
+                    }
+                }
+                def classInfo = [:]
+                def loadClass = { String owner ->
+                    if (!classInfo.containsKey(owner)) {
+                        def dependency = classFiles[owner + '.class']
+                        if (dependency == null) return null
+                        def reader = new org.objectweb.asm.ClassReader(dependency.getInputStream(dependency.getEntry(owner + '.class')).bytes)
+                        def info = [parents: ([reader.superName] + reader.interfaces.toList()).findAll { it != null }, methods: [] as Set, fields: [] as Set]
+                        reader.accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                            @Override
+                            org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                                info.methods.add(name + descriptor)
+                                return null
+                            }
+                            @Override
+                            org.objectweb.asm.FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+                                info.fields.add(name + descriptor)
+                                return null
+                            }
+                        }, org.objectweb.asm.ClassReader.SKIP_CODE | org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES)
+                        classInfo[owner] = info
+                    }
+                    classInfo[owner]
+                }
+                def hasMember
+                hasMember = { String owner, String kind, String member, Set visited ->
+                    if (!visited.add(owner)) return false
+                    def info = loadClass(owner)
+                    if (info == null) return false
+                    info[kind].contains(member) || (!member.startsWith('<init>') && info.parents.any { hasMember(it, kind, member, visited) })
+                }
+                def failures = [] as Set
+                def checkReference = { String caller, String owner, String name, String descriptor, boolean method ->
+                    if (!(owner.startsWith('net/minecraft/') || owner.startsWith('net/fabricmc/'))) return
+                    if (!hasMember(owner, method ? 'methods' : 'fields', name + descriptor, [] as Set)) {
+                        failures.add("${caller}: ${owner}.${name}${descriptor}")
+                    }
+                }
+                zip.entries().findAll { it.name.endsWith('.class') }.each { entry ->
+                    new org.objectweb.asm.ClassReader(zip.getInputStream(entry).bytes).accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                        @Override
+                        org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                            new org.objectweb.asm.MethodVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                                @Override
+                                void visitMethodInsn(int opcode, String owner, String method, String desc, boolean isInterface) {
+                                    checkReference(entry.name, owner, method, desc, true)
+                                }
+                                @Override
+                                void visitFieldInsn(int opcode, String owner, String field, String desc) {
+                                    checkReference(entry.name, owner, field, desc, false)
+                                }
+                                @Override
+                                void visitInvokeDynamicInsn(String method, String desc, org.objectweb.asm.Handle bootstrap, Object... arguments) {
+                                    arguments.findAll { it instanceof org.objectweb.asm.Handle }.each { handle ->
+                                        checkReference(entry.name, handle.owner, handle.name, handle.desc, handle.tag > org.objectweb.asm.Opcodes.H_PUTSTATIC)
+                                    }
+                                }
+                            }
+                        }
+                    }, org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES)
+                }
+                if (!failures.isEmpty()) throw new GradleException("Unresolved API references on Minecraft ${mc}:\n" + failures.join('\n'))
+                logger.lifecycle("Verified shipped Minecraft/Fabric API references against ${mc}")
+            } finally {
+                dependencies.each { it.close() }
+            }
             new java.util.zip.ZipFile(minecraftJar).withCloseable { minecraftZip ->
                 def hooks = [
                     ['net/minecraft/client/KeyboardHandler.class', 'charTyped', 'dev/greenhouse/mixin/TrackerKeyboardMixin.class', 'greenhouse$typeDate', 'V', 'CallbackInfo'],
@@ -132,7 +228,7 @@ tasks.register('verifyDistribution') {
                 }
             }
             def metadata = new groovy.json.JsonSlurper().parse(zip.getInputStream(zip.getEntry('fabric.mod.json')))
-            if (metadata.id != 'greenhouse' || metadata.version != project.version.toString() || metadata.depends.minecraft != mc) {
+            if (metadata.id != 'greenhouse' || metadata.version != project.version.toString() || metadata.depends.minecraft != supportedMinecraft) {
                 throw new GradleException('Distribution metadata does not match this build')
             }
             def service = zip.getInputStream(zip.getEntry(required[3])).getText('UTF-8').trim()

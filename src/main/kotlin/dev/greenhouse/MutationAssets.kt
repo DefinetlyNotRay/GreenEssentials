@@ -19,6 +19,7 @@ internal object MutationAssets {
 
     private val compactUuidPattern = Regex("(.{8})(.{4})(.{4})(.{4})(.{12})")
     private val profiles = mutableMapOf<String, GameProfile>()
+    private val textureKeys = mutableMapOf<String, String>()
     private val stacks = mutableMapOf<String, ItemStack>()
     private var stackLevel: ClientLevel? = null
 
@@ -38,6 +39,7 @@ internal object MutationAssets {
                 GreenhouseMutation.registerSkin(id, texture, profile.id.toString())
             }
             profiles[id] = profile
+            textureKeys[id] = textureKey(texture)
         }
     }
 
@@ -49,6 +51,19 @@ internal object MutationAssets {
         val properties = PropertyMap(ImmutableMultimap.of("textures", Property("textures", texture)))
         return GameProfile(uuid, "Greenhouse", properties)
     }
+
+    /** Placed layout items can lose their display name or use a different profile UUID. */
+    fun matches(id: String, name: String?, texture: String?, owner: String?): Boolean {
+        val normalizedName = name?.let(::clean)?.filter(Char::isLetterOrDigit)
+        if (normalizedName.equals(id.filter(Char::isLetterOrDigit), ignoreCase = true)) return true
+        if (texture != null && textureKeys[id]?.let { it == textureKey(texture) } == true) return true
+        return owner != null && profiles[id]?.id?.toString()?.equals(owner, ignoreCase = true) == true
+    }
+
+    private fun textureKey(texture: String): String = runCatching {
+        val data = JsonParser.parseString(String(Base64.getDecoder().decode(texture))).asJsonObject
+        data.getAsJsonObject("textures").getAsJsonObject("SKIN")["url"].asString.substringAfterLast('/')
+    }.getOrDefault(texture)
 
     fun stack(id: String): ItemStack? {
         val level = Minecraft.getInstance().level ?: return null

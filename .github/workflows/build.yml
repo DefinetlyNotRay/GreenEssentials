@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minecraft: ['26.1', '26.1.2', '26.2', '26.3']
+        minecraft: ['26.1', '26.2', '26.3']
     steps:
       - uses: actions/checkout@v6
         with:
@@ -25,3 +25,6 @@ jobs:
           cache: gradle
       - name: Build, test, and verify installable JAR
         run: ./gradlew build -Pminecraft_version=${{ matrix.minecraft }} --console=plain
+      - name: Verify the same 26.1 JAR against 26.1.2
+        if: matrix.minecraft == '26.1'
+        run: ./gradlew verifyDistribution -Pminecraft_version=26.1 -Pcompatibility_version=26.1.2 --console=plain

@@ -10,12 +10,13 @@ Install JDK 25. From the repository root on Windows:
 
 ```powershell
 .\gradlew.bat build '-Pminecraft_version=26.1' --console=plain
-.\gradlew.bat build '-Pminecraft_version=26.1.2' --console=plain
 .\gradlew.bat build '-Pminecraft_version=26.2' --console=plain
 .\gradlew.bat build '-Pminecraft_version=26.3' --console=plain
 ```
 
 On Linux/macOS use `./gradlew` with the same arguments. Installable shaded JARs appear in build/libs. Unit tests run as part of build. The nodeps JAR is only an intermediate artifact.
+
+The 26.1 JAR supports both Minecraft 26.1 and 26.1.2. There is no separate 26.1.2 release JAR. After building 26.1, verify that same artifact against 26.1.2 with `.\gradlew.bat verifyDistribution '-Pminecraft_version=26.1' '-Pcompatibility_version=26.1.2' --console=plain`. This checks Minecraft and Fabric API references and render hook signatures without rebuilding the artifact. It does not replace testing in-game on both versions.
 
 ## Bundled dependency source
 
