@@ -82,7 +82,7 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
         val listTop = panelY + HEADER_HEIGHT
         val listBottom = panelY + panelHeight - FOOTER_HEIGHT
         val layouts = LibraryActions.layouts().toSortedMap()
-        val cardContentHeight = layouts.size * CARD_HEIGHT + (layouts.size - 1).coerceAtLeast(0) * CARD_SPACING
+        val cardContentHeight = layouts.values.sumOf(::cardHeight) + (layouts.size - 1).coerceAtLeast(0) * CARD_SPACING
         maximumScroll = (cardContentHeight - (listBottom - listTop)).coerceAtLeast(0)
         updateSmoothScroll()
 
@@ -94,9 +94,12 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
                 listTop + 18,
             )
         } else {
-            layouts.entries.forEachIndexed { index, (name, blueprint) ->
-                val cardY = (listTop + index * (CARD_HEIGHT + CARD_SPACING) - scrollOffset).roundToInt()
-                if (cardY + CARD_HEIGHT > listTop && cardY < listBottom) {
+            var offset = 0
+            layouts.entries.forEach { (name, blueprint) ->
+                val height = cardHeight(blueprint)
+                val cardY = (listTop + offset - scrollOffset).roundToInt()
+                offset += height + CARD_SPACING
+                if (cardY + height > listTop && cardY < listBottom) {
                     actionClipTop = listTop
                     actionClipBottom = listBottom
                     drawLayoutCard(panelX + PADDING, cardY, panelWidth - PADDING * 2, name, blueprint)
@@ -116,6 +119,25 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
         graphics.pose().popMatrix()
     }
 
+    private fun outputLines(blueprint: GreenHouseStorage.MutationBlueprintStorage): List<String> {
+        val outputs = LibraryActions.outputMutations(blueprint)
+        if (outputs.isEmpty()) return listOf("§7Spawned outputs: §cNot detected")
+        val lines = mutableListOf<String>()
+        var line = "§7Spawned outputs: §e"
+        outputs.forEach { output ->
+            val name = output.displayName + ", "
+            if (mc.font.width(line + name) > PANEL_WIDTH - PADDING * 2 - 66) {
+                lines.add(line.trimEnd(' ', ','))
+                line = "§e"
+            }
+            line += name
+        }
+        lines.add(line.trimEnd(' ', ','))
+        return lines
+    }
+
+    private fun cardHeight(blueprint: GreenHouseStorage.MutationBlueprintStorage) = CARD_HEIGHT + (outputLines(blueprint).size - 1) * 12
+
     private fun drawLayoutCard(
         x: Int,
         y: Int,
@@ -123,13 +145,15 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
         name: String,
         blueprint: GreenHouseStorage.MutationBlueprintStorage,
     ) {
+        val outputLines = outputLines(blueprint)
+        val cardHeight = cardHeight(blueprint)
         val active = LibraryActions.activeLayoutName(plotId) == name
-        drawRect(x, y, x + cardWidth, y + CARD_HEIGHT, if (active) ACTIVE_CARD_COLOR else CARD_COLOR)
+        drawRect(x, y, x + cardWidth, y + cardHeight, if (active) ACTIVE_CARD_COLOR else CARD_COLOR)
         val borderColor = if (active) ACTIVE_BORDER_COLOR else BORDER_COLOR
         drawRect(x, y, x + cardWidth, y + 1, borderColor)
-        drawRect(x, y + CARD_HEIGHT - 1, x + cardWidth, y + CARD_HEIGHT, borderColor)
-        drawRect(x, y, x + 1, y + CARD_HEIGHT, borderColor)
-        drawRect(x + cardWidth - 1, y, x + cardWidth, y + CARD_HEIGHT, borderColor)
+        drawRect(x, y + cardHeight - 1, x + cardWidth, y + cardHeight, borderColor)
+        drawRect(x, y, x + 1, y + cardHeight, borderColor)
+        drawRect(x + cardWidth - 1, y, x + cardWidth, y + cardHeight, borderColor)
 
         drawGridPreview(x + 7, y + 7, blueprint)
         if (pendingRename == name) {
@@ -147,19 +171,14 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
             )
             addAction(nameX, y + 4, nameRight, y + 19) { startRename(name) }
         }
-        val target = LibraryActions.targetMutation(blueprint)
-        drawString(
-            target?.let { "§7Spawned output: §e${it.displayName} §8(ignored)" } ?: "§7Spawned output: §cNot detected",
-            x + 58,
-            y + 21,
-        )
+        outputLines.forEachIndexed { index, line -> drawString(line, x + 58, y + 21 + index * 12) }
         val roles = LibraryActions.roleCounts(blueprint)
         val setupCount = roles.getOrDefault(GreenhouseLayoutAnalysis.Role.SPAWN_INPUT, 0)
         val buffCount = roles.getOrDefault(GreenhouseLayoutAnalysis.Role.YIELD_BUFF, 0)
         val uniqueCount = roles.getOrDefault(GreenhouseLayoutAnalysis.Role.UNIQUE_CROP, 0)
-        drawString("§a$setupCount setup §7• §b$buffCount buffs §7• §6$uniqueCount unique", x + 58, y + 33)
+        drawString("§a$setupCount setup §7• §b$buffCount buffs §7• §6$uniqueCount unique", x + 58, y + 21 + outputLines.size * 12)
 
-        val buttonY = y + CARD_HEIGHT - 20
+        val buttonY = y + cardHeight - 20
         if (pendingRename == name) {
             drawButton(x + 58, buttonY, 42, 14, "§aSave") { saveRename() }
             drawButton(x + 105, buttonY, 48, 14, "§7Cancel") { cancelRename() }
@@ -255,15 +274,15 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
             drawRect(x, y + cell * CELL_SIZE, x + PREVIEW_SIZE, y + cell * CELL_SIZE + 1, line)
         }
         if (blueprint.importedCells.isNotEmpty()) {
-            val target = LibraryActions.targetMutation(blueprint)
+            val outputs = LibraryActions.outputMutations(blueprint)
             blueprint.importedCells
                 .sortedBy { if (SpawningSurfaces.Surface.fromId(it.cropId) != null) 0 else 1 }
                 .forEach { placement ->
                     val size = GreenhouseMutation.fromSkyShardsId(placement.cropId)?.size ?: 1
                     val role =
-                        GreenhouseLayoutAnalysis.roleFor(
+                        GreenhouseLayoutAnalysis.roleForOutputs(
                             GreenhouseLayoutAnalysis.Entry(placement.cropId, size * size, placement.target),
-                            target,
+                            outputs,
                         )
                     repeat(size) { rowOffset ->
                         repeat(size) { columnOffset ->
@@ -279,15 +298,15 @@ internal class GreenhouseScreen : Screen(Component.literal("GreenEssentials Layo
                     }
                 }
         } else {
-            val target = LibraryActions.targetMutation(blueprint)
+            val outputs = LibraryActions.outputMutations(blueprint)
             blueprint.mutations.forEach { placement ->
                 val cellX = floor(placement.offset.x).toInt() + GRID_SIZE / 2
                 val cellZ = floor(placement.offset.z).toInt() + GRID_SIZE / 2
                 val size = GreenhouseMutation.fromInternalId(placement.mutationId)?.size ?: placement.size
                 val role =
-                    GreenhouseLayoutAnalysis.roleFor(
+                    GreenhouseLayoutAnalysis.roleForOutputs(
                         GreenhouseLayoutAnalysis.Entry(placement.mutationId.lowercase(), size * size),
-                        target,
+                        outputs,
                     )
                 drawPreviewCell(x, y, cellX, cellZ, placement.mutationId, role)
             }

@@ -58,10 +58,27 @@ internal object GreenhouseLayoutAnalysis {
         return scored.getValue(bestScore).singleOrNull()
     }
 
+    fun inferOutputs(entries: List<Entry>): Set<GreenhouseMutation> {
+        val explicit = entries.filter(Entry::explicitTarget)
+            .mapNotNull { GreenhouseMutation.fromSkyShardsId(it.cropId) }.toSet()
+        if (explicit.isNotEmpty()) return explicit
+        val available = entries.groupingBy { it.cropId.lowercase() }.fold(0) { total, entry -> total + entry.occupiedCells }
+        return GreenhouseMutation.entries.filterTo(linkedSetOf()) { mutation ->
+            mutation.spawnRequirements.isNotEmpty() && mutation.spawnRequirements.all { (id, count) ->
+                available.getOrDefault(id, 0) >= count
+            }
+        }
+    }
+
     fun roleFor(entry: Entry, target: GreenhouseMutation?): Role {
+        return roleForOutputs(entry, setOfNotNull(target))
+    }
+
+    fun roleForOutputs(entry: Entry, outputs: Set<GreenhouseMutation>): Role {
         val mutation = GreenhouseMutation.fromSkyShardsId(entry.cropId)
-        if (entry.explicitTarget || mutation == target) return Role.TARGET_OUTPUT
-        if (entry.cropId.lowercase() in target?.spawnRequirements.orEmpty()) return Role.SPAWN_INPUT
+        if (entry.explicitTarget) return Role.TARGET_OUTPUT
+        if (outputs.any { entry.cropId.lowercase() in it.spawnRequirements }) return Role.SPAWN_INPUT
+        if (mutation in outputs) return Role.TARGET_OUTPUT
         if (mutation?.providesYieldBuff == true) return Role.YIELD_BUFF
         if (entry.cropId.lowercase() in uniqueCropIds) return Role.UNIQUE_CROP
         return Role.OTHER

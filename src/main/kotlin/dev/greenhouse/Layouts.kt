@@ -185,6 +185,21 @@ internal object Layouts {
         return GreenhouseLayoutAnalysis.inferTarget(entries)
     }
 
+    fun outputs(blueprint: GreenHouseStorage.MutationBlueprintStorage): Set<GreenhouseMutation> {
+        if (blueprint.targetMutationId == "NONE") return emptySet()
+        val entries = if (blueprint.importedCells.isNotEmpty()) {
+            blueprint.importedCells.map { cell ->
+                val size = GreenhouseMutation.fromSkyShardsId(cell.cropId)?.size ?: 1
+                GreenhouseLayoutAnalysis.Entry(cell.cropId, size * size, cell.target)
+            }
+        } else blueprint.mutations.map { placement ->
+            val size = GreenhouseMutation.fromInternalId(placement.mutationId)?.size ?: placement.size
+            GreenhouseLayoutAnalysis.Entry(placement.mutationId.lowercase(), size * size)
+        }
+        return GreenhouseLayoutAnalysis.inferOutputs(entries) +
+            listOfNotNull(GreenhouseMutation.fromInternalId(blueprint.targetMutationId))
+    }
+
     fun clear() {
         missing = emptyList()
         previousMissingPlants = emptyList()
@@ -231,8 +246,9 @@ internal object Layouts {
     private fun findMissingPlants(blueprint: GreenHouseStorage.MutationBlueprintStorage, plot: GardenPlot): List<Missing> {
         val area = GreenhouseGridScanner.area(plot)
         val liveMutations = GreenhouseMutationScanner.scan(area).toMutableList()
-        val targetMutation = target(blueprint)
-        val neededDevourerInputs = if (Storage.settings.devourerInputsOnly && targetMutation == GreenhouseMutation.DEVOURER) {
+        val outputMutations = outputs(blueprint)
+        val ingredientIds = outputMutations.flatMap { it.spawnRequirements.keys }.toSet()
+        val neededDevourerInputs = if (Storage.settings.devourerInputsOnly && outputMutations == setOf(GreenhouseMutation.DEVOURER)) {
             val occupied = GreenhouseGridScanner.occupiedMutationCells(plot.middle, liveMutations)
                 .mapTo(mutableSetOf()) { (row, column) -> DevourerLayout.Cell(row, column) }
             DevourerRoots.positions.mapTo(occupied) { DevourerLayout.cellAt(it, plot.middle) }
@@ -243,7 +259,7 @@ internal object Layouts {
         return buildList {
             blueprint.mutations.forEach { saved ->
                 val mutation = GreenhouseMutation.fromInternalId(saved.mutationId) ?: return@forEach
-                if (mutation == targetMutation) return@forEach
+                if (mutation in outputMutations && mutation.internalId.lowercase() !in ingredientIds) return@forEach
                 val savedPosition = plot.middle + saved.offset
                 val expected = if (blueprint.importedCells.isNotEmpty()) savedPosition.copy(y = 74.0) else savedPosition
                 if (neededDevourerInputs != null && DevourerLayout.cellAt(expected, plot.middle) !in neededDevourerInputs) return@forEach

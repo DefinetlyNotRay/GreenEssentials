@@ -198,6 +198,54 @@ class TrackerOptions {
 }
 
 class LayoutOptions {
+    @JvmField
+    @Expose
+    @ConfigOption(name = "Schematic Overlay", desc = "Highlight missing crops in the active layout.")
+    @ConfigEditorBoolean
+    val overlay =
+        setting(Storage.settings.overlay) {
+            Storage.settings.overlay = it
+            Layouts.clear()
+        }
+
+    @JvmField
+    @ConfigOption(name = "Layout Library", desc = "Capture, import, rotate, and load schematics. Command: /ge layouts or /gelayouts.")
+    @ConfigEditorButton(buttonText = "Open")
+    val library = Runnable { open { GreenhouseScreen() } }
+
+
+    @JvmField @Expose
+    @ConfigOption(name = "Layout Appearance", desc = "Schematic colors, highlights, holograms, and labels.")
+    @Accordion
+    val layout = LayoutAppearanceOptions()
+
+    @JvmField
+    @Expose
+    @ConfigOption(
+        name = "Devourer Spawners",
+        desc = "Only highlight spawners still needed by an unoccupied Devourer spawn spot. Shared spawners stay highlighted until no spawn spot needs them.",
+    )
+    @ConfigEditorBoolean
+    val devourerInputsOnly = setting(Storage.settings.devourerInputsOnly) {
+        Storage.settings.devourerInputsOnly = it
+        Layouts.clear()
+    }
+
+    @JvmField
+    @Expose
+    @ConfigOption(name = "Highlight Roots", desc = "Show an orange name tag above every detected root, even without an active layout.")
+    @ConfigEditorBoolean
+    val highlightDevourerRoots = setting(Storage.settings.highlightDevourerRoots) {
+        Storage.settings.highlightDevourerRoots = it
+    }
+
+    @JvmField
+    @ConfigOption(name = "Plot Detection", desc = "Open the Garden Configure Plots menu once to register Greenhouse plots.")
+    @ConfigEditorInfoText
+    val plots = ""
+}
+
+class LayoutAppearanceOptions {
     @JvmField @Expose
     @ConfigOption(name = "Highlights", desc = "Show colored planting footprints for missing crops.")
     @ConfigEditorBoolean
@@ -228,44 +276,6 @@ class LayoutOptions {
     @ConfigEditorBoolean
     val surfaces = setting(Storage.settings.layoutSurfaces) { Storage.settings.layoutSurfaces = it }
 
-    @JvmField
-    @Expose
-    @ConfigOption(name = "Schematic Overlay", desc = "Highlight missing crops in the active layout.")
-    @ConfigEditorBoolean
-    val overlay =
-        setting(Storage.settings.overlay) {
-            Storage.settings.overlay = it
-            Layouts.clear()
-        }
-
-    @JvmField
-    @Expose
-    @ConfigOption(
-        name = "Devourer Spawners",
-        desc = "Only highlight spawners still needed by an unoccupied Devourer spawn spot. Shared spawners stay highlighted until no spawn spot needs them.",
-    )
-    @ConfigEditorBoolean
-    val devourerInputsOnly = setting(Storage.settings.devourerInputsOnly) {
-        Storage.settings.devourerInputsOnly = it
-        Layouts.clear()
-    }
-
-    @JvmField
-    @Expose
-    @ConfigOption(name = "Highlight Roots", desc = "Show an orange name tag above every detected root, even without an active layout.")
-    @ConfigEditorBoolean
-    val highlightDevourerRoots = setting(Storage.settings.highlightDevourerRoots) {
-        Storage.settings.highlightDevourerRoots = it
-    }
-
-    @JvmField
-    @ConfigOption(name = "Layout Library", desc = "Capture, import, rotate, and load schematics. Command: /ge layouts or /gelayouts.")
-    @ConfigEditorButton(buttonText = "Open")
-    val library = Runnable { open { GreenhouseScreen() } }
-    @JvmField
-    @ConfigOption(name = "Plot Detection", desc = "Open the Garden Configure Plots menu once to register Greenhouse plots.")
-    @ConfigEditorInfoText
-    val plots = ""
 }
 
 class JellyShortOptions {

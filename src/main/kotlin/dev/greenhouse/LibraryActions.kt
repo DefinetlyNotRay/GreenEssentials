@@ -25,6 +25,8 @@ internal object LibraryActions {
 
     fun targetMutation(blueprint: GreenHouseStorage.MutationBlueprintStorage) = Layouts.target(blueprint)
 
+    fun outputMutations(blueprint: GreenHouseStorage.MutationBlueprintStorage) = Layouts.outputs(blueprint)
+
     fun roleCounts(blueprint: GreenHouseStorage.MutationBlueprintStorage): Map<GreenhouseLayoutAnalysis.Role, Int> {
         val entries =
             if (blueprint.importedCells.isNotEmpty())
@@ -37,7 +39,8 @@ internal object LibraryActions {
                     val size = GreenhouseMutation.fromInternalId(it.mutationId)?.size ?: it.size
                     GreenhouseLayoutAnalysis.Entry(it.mutationId.lowercase(), size * size)
                 }
-        return entries.groupingBy { GreenhouseLayoutAnalysis.roleFor(it, Layouts.target(blueprint)) }.eachCount()
+        val outputs = Layouts.outputs(blueprint)
+        return entries.groupingBy { GreenhouseLayoutAnalysis.roleForOutputs(it, outputs) }.eachCount()
     }
 
     fun loadLayout(plot: Int, name: String) {
