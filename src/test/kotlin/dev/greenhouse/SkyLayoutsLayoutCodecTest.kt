@@ -56,6 +56,46 @@ class SkyLayoutsLayoutCodecTest {
         }
     }
 
+    @Test
+    fun `resolve saved share link into packed board`() {
+        val board = "3KENqfLWBLzMP73nBZ_sDMcBTDbbxhlsp2GaLGJJ-XR5a9"
+        val path = "/layout.html?m=THUNDERLING&i=4&ranked=thunderling_s4_plot1#b1=$board&b2=$board&b3=$board"
+        var requested = ""
+        val layout = SkyLayoutsLayoutCodec.decodeWithResolver("https://skylayouts.io/l/sZYHBjgNMK_FVF-ac") {
+            requested = it
+            """{"path":"$path"}"""
+        }
+        assertEquals("sZYHBjgNMK_FVF-ac", requested)
+        org.junit.jupiter.api.Assertions.assertTrue(layout.inputs.isNotEmpty())
+        assertEquals(SkyLayoutsLayoutCodec.decode("https://skylayouts.io/l/1AB~p$board"), layout)
+    }
+
+    @Test
+    fun `resolved links preserve selected plot and embedded links need no lookup`() {
+        val board = "3KENqfLWBLzMP73nBZ_sDMcBTDbbxhlsp2GaLGJJ-XR5a9"
+        val layout = SkyLayoutsLayoutCodec.decodeWithResolver("https://skylayouts.io/l/sZYHBjgNMK_FVF-ac") {
+            """{"path":"/layout.html?p=2#b1=3KA&b2=$board"}"""
+        }
+        assertEquals(SkyLayoutsLayoutCodec.decode("https://skylayouts.io/l/1AB~p$board"), layout)
+        assertEquals(SkyLayoutsLayoutCodec.decode(SHORT_FIXTURE),
+            SkyLayoutsLayoutCodec.decodeWithResolver(SHORT_FIXTURE) { error("Unexpected network lookup") })
+        assertEquals(SkyLayoutsLayoutCodec.decode(SHORT_FIXTURE),
+            SkyLayoutsLayoutCodec.decodeWithResolver("https://skylayouts.io/l/sZYHBjgNMK_FVF-ac") {
+                """{"path":"${SHORT_FIXTURE.removePrefix("https://skylayouts.io")}"}"""
+            })
+    }
+
+    @Test
+    fun `reject invalid saved share responses`() {
+        for (response in listOf("not json", "{}", """{"path":"https://example.com/l/1AB"}""",
+            """{"path":"//example.com/l/1AB"}""", """{"path":"/l/sZYHBjgNMK_FVF-ac"}""",
+            """{"path":"/layout.html?p=2#b1=3KA"}""")) {
+            assertThrows(IllegalArgumentException::class.java) {
+                SkyLayoutsLayoutCodec.decodeWithResolver("https://skylayouts.io/l/sZYHBjgNMK_FVF-ac") { response }
+            }
+        }
+    }
+
     companion object {
         private const val SHORT_FIXTURE = "https://skylayouts.io/l/" +
             "1xH~p3KIqfL0Nel1j3KPCnhU1uiEJNH19SDEVhl6WM7Z9rvv-rOPphqBFaOqG-DL-LAQ7"

@@ -34,6 +34,7 @@ internal object Tracker {
 
     private val journal = AttributionJournal()
     private val attribution = HarvestAttribution(record = journal::record)
+    private val thunderBottles = ThunderBottleInventory()
     private val sessions = TrackerSessions()
     private val days = TrackerDays(history = Storage.history)
     private var selectedRange: TrackerDateRange? = null
@@ -181,6 +182,7 @@ internal object Tracker {
     fun diagnostics(): Pair<List<AttributionEvent>, Long> = journal.snapshot() to journal.droppedEvents
 
     fun resetRuntime(reason: String = "user_or_context_reset") {
+        thunderBottles.reset()
         HarvestSignals.reset()
         attribution.reset(reason)
         val now = System.currentTimeMillis()
@@ -247,7 +249,9 @@ internal object Tracker {
         val eligible = Storage.settings.enabled && Storage.profile != null && currentPlot() != null &&
             client.currentScreen == null && now - lastPestRewardAt > PEST_REWARD_COOLDOWN_MILLIS
         recordFarmingTime(eligible, elapsed, now)
-        attribution.snapshot(inventorySnapshot(player), eligible && wasEligible)
+        val inventory = inventorySnapshot(player)
+        attribution.snapshot(inventory, eligible && wasEligible)
+        recordFilledBottles(thunderBottles.snapshot(inventory, eligible && wasEligible, now))
         if (eligible) observeMutationDeaths(level, player)
         wasEligible = eligible
         if (ticks % GAIN_FLUSH_TICKS == 0) flush()
@@ -303,10 +307,18 @@ internal object Tracker {
 
     fun flush() {
         val gains = attribution.flush()
+        recordGains(gains)
+    }
+
+    private fun recordGains(gains: Map<String, Long>) {
         val profile = Storage.profile ?: return
         gains.forEach { (id, count) -> profile.items[id] = profile.items.getOrDefault(id, 0) + count }
         Storage.scope?.let { sessions.record(it, gains) }
         days.recordPrices(profile, days.recordingDay, gains, Prices::priceAtSource)
+    }
+
+    private fun recordFilledBottles(count: Long) {
+        if (count > 0) recordGains(mapOf(ThunderBottle.COMPLETED_ID to count))
     }
 
     fun chat(message: Component) {
@@ -324,6 +336,10 @@ internal object Tracker {
             return
         }
         if (currentPlot() == null && !text.startsWith("[Sacks]")) return
+        ThunderBottle.charge(text)?.let { charge ->
+            recordGains(mapOf(ThunderBottle.CHARGE_ID to charge))
+            recordFilledBottles(thunderBottles.confirm(System.currentTimeMillis()))
+        }
         if (Minecraft.getInstance().currentScreen == null) {
             val mobName = shardPatterns.firstNotNullOfOrNull { it.find(text)?.groupValues?.get(1) }
             mobName?.let(::mutationMob)?.let { id -> attribution.mutation(id, true) }

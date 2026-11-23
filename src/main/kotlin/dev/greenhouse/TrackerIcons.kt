@@ -21,6 +21,8 @@ internal object TrackerIcons {
         return stacks.getOrPut(id) {
             val item =
                 when (Catalog.units[id]?.base ?: id) {
+                    ThunderBottle.CHARGE_ID -> Items.EXPERIENCE_BOTTLE
+                    ThunderBottle.COMPLETED_ID -> Items.EXPERIENCE_BOTTLE
                     "WHEAT" -> Items.WHEAT
                     "SEEDS" -> Items.WHEAT_SEEDS
                     "CARROT_ITEM" -> Items.CARROT

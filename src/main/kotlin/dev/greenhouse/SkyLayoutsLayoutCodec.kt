@@ -8,14 +8,72 @@ import java.util.zip.Inflater
 
 internal object SkyLayoutsLayoutCodec {
 
-    fun decode(input: String): SkyShardsLayoutCodec.Layout {
+    fun decode(input: String): SkyShardsLayoutCodec.Layout = decodeWithResolver(input, ::fetchShareLink)
+
+    fun needsResolution(input: String): Boolean = shareId(input) != null
+
+    private fun shareId(input: String): String? = shortLinkPattern.find(input.replace("\\", ""))
+        ?.groupValues?.get(1)?.takeIf { it.matches(Regex("s[A-Za-z0-9_-]{16}")) }
+
+    internal fun decodeWithResolver(input: String, resolve: (String) -> String): SkyShardsLayoutCodec.Layout {
         require(input.contains(SKYLAYOUTS_HOST, ignoreCase = true)) {
             "The clipboard does not contain a SkyLayouts link."
         }
-        val encoded =
-            shortLinkPattern.find(input)?.groupValues?.get(1)
-                ?: throw IllegalArgumentException("The clipboard does not contain a SkyLayouts short link.")
-        return decodeShortLink(URLDecoder.decode(encoded.replace("\\", ""), StandardCharsets.UTF_8))
+        val id = shareId(input)
+        if (id != null) {
+            val response = try { com.google.gson.JsonParser.parseString(resolve(id)).asJsonObject }
+            catch (error: Exception) { throw IllegalArgumentException("Could not load the SkyLayouts link. Try again.", error) }
+            val path = runCatching { response.get("path").asString }.getOrNull()
+            require(path != null && path.length <= 32768 && path.startsWith("/") && !path.startsWith("//")) {
+                "SkyLayouts returned an invalid layout link."
+            }
+            val uri = java.net.URI(path)
+            require(!uri.isAbsolute && uri.rawAuthority == null &&
+                (uri.path == "/layout.html" || uri.path.matches(Regex("/l/1[A-Za-z0-9_~-]+")))) {
+                "SkyLayouts returned an unsupported layout link."
+            }
+            return decodeEmbedded("https://$SKYLAYOUTS_HOST$path")
+        }
+        return decodeEmbedded(input)
+    }
+
+    private fun fetchShareLink(id: String): String {
+        val connection = java.net.URI("https://$SKYLAYOUTS_HOST/api/share-links/$id").toURL().openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 10000
+        connection.readTimeout = 10000
+        connection.instanceFollowRedirects = false
+        connection.setRequestProperty("Accept", "application/json")
+        try {
+            require(connection.responseCode != 404) { "This SkyLayouts link was not found." }
+            require(connection.responseCode == 200) { "Could not load the SkyLayouts link. Try again." }
+            return connection.inputStream.use {
+                val bytes = it.readNBytes(65537)
+                require(bytes.size <= 65536) { "The SkyLayouts response is too large." }
+                String(bytes, StandardCharsets.UTF_8)
+            }
+        } finally { connection.disconnect() }
+    }
+
+    private fun decodeEmbedded(input: String): SkyShardsLayoutCodec.Layout {
+        val normalized = input.replace("\\", "")
+        if (normalized.contains("/layout.html")) {
+            val link = Regex("https?://[^\\s\\])>]+").find(normalized)?.value
+                ?: throw IllegalArgumentException("Invalid SkyLayouts link.")
+            val uri = java.net.URI(link)
+            fun parameters(value: String?) = value.orEmpty().split('&').associate {
+                val parts = it.split('=', limit = 2)
+                parts[0] to URLDecoder.decode(parts.getOrElse(1) { "" }, StandardCharsets.UTF_8)
+            }
+            val plot = parameters(uri.rawQuery)["p"]?.toIntOrNull() ?: 1
+            require(plot in 1..3) { "Invalid SkyLayouts plot." }
+            val boards = parameters(uri.rawFragment)
+            val board = boards["b$plot"] ?: if (plot == 1) boards["b"] else null
+            requireNotNull(board) { "The SkyLayouts link does not contain Plot $plot data." }
+            return layoutFromCells(decodeVersionThreeBoard(board))
+        }
+        val encoded = shortLinkPattern.find(normalized)?.groupValues?.get(1)
+            ?: throw IllegalArgumentException("The clipboard does not contain a SkyLayouts short link.")
+        return decodeShortLink(URLDecoder.decode(encoded, StandardCharsets.UTF_8))
     }
 
     private fun decodeShortLink(code: String): SkyShardsLayoutCodec.Layout {

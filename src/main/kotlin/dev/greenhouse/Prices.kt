@@ -40,6 +40,8 @@ internal object Prices {
     fun displayName(id: String): String {
         GreenhouseMutation.fromInternalId(id)?.let { return it.displayName }
         return when (id) {
+            ThunderBottle.CHARGE_ID -> "Thunder Bottle Charge"
+            ThunderBottle.COMPLETED_ID -> "Thunder Bottles Filled"
             "CARROT_ITEM" -> "Carrot"
             "POTATO_ITEM" -> "Potato"
             "NETHER_STALK" -> "Nether Wart"
@@ -71,6 +73,7 @@ internal object Prices {
         val instantSell: Map<String, Double>,
         val displayNames: Map<String, String>?,
         val npcPrices: Map<String, Double>?,
+        val thunderAverage: Double?,
     )
 
     fun refresh(force: Boolean = false) {
@@ -102,23 +105,37 @@ internal object Prices {
             val data = item.asJsonObject
             data["npc_sell_price"]?.asDouble?.let { value -> data["id"].asString to value }
         }?.toMap()
-        return PriceUpdate(instantBuy, instantSell, displayNames, npcPrices)
+        // AH outages must not interrupt Bazaar/NPC updates. Retain the last
+        // successful AH quote until the next refresh succeeds.
+        val thunderAverage = runCatching {
+            ThunderBottle.auctionAverage(fetchJson("https://sky.coflnet.com/api/item/price/${ThunderBottle.FILLED_ID}/analysis?days=3"))
+        }.getOrNull()
+        return PriceUpdate(instantBuy, instantSell, displayNames, npcPrices, thunderAverage)
     }
 
     private fun fetch(path: String): JsonObject {
-        val request = HttpRequest.newBuilder(URI("https://api.hypixel.net/v2/$path"))
+        return fetchJson("https://api.hypixel.net/v2/$path").also { require(it["success"].asBoolean) }
+    }
+
+    private fun fetchJson(url: String): JsonObject {
+        val request = HttpRequest.newBuilder(URI(url))
             .timeout(Duration.ofSeconds(15))
             .header("User-Agent", "Greenhouse/0.1.0")
             .GET()
             .build()
         val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
         require(response.statusCode() == 200) { "HTTP ${response.statusCode()}" }
-        return JsonParser.parseString(response.body()).asJsonObject.also { require(it["success"].asBoolean) }
+        return JsonParser.parseString(response.body()).asJsonObject
     }
 
     private fun applyPrices(update: PriceUpdate) {
-        book = PriceBook(update.instantBuy, update.instantSell, update.npcPrices ?: book.npc)
+        val auctions = update.thunderAverage?.let { mapOf(ThunderBottle.FILLED_ID to it) } ?: book.auctionAverages
+        book = PriceBook(update.instantBuy, update.instantSell, update.npcPrices ?: book.npc, auctions)
         update.displayNames?.let { names = it }
-        status = "Bazaar / NPC prices"
+        status = when {
+            update.thunderAverage != null -> "Bazaar / NPC / AH prices"
+            auctions.isNotEmpty() -> "Bazaar / NPC prices (AH cached)"
+            else -> "Bazaar / NPC prices (AH unavailable)"
+        }
     }
 }

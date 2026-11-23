@@ -72,6 +72,24 @@ internal object Layouts {
             put(name, GreenhouseBlueprintFile.decode(input).blueprint)
             return
         }
+        if (input.contains("skylayouts", true) && SkyLayoutsLayoutCodec.needsResolution(input)) {
+            require(Storage.profile != null) { "Select your profile first." }
+            val scope = Storage.scope
+            val plot = currentLayoutPlot()?.id
+            say("Loading layout?")
+            java.util.concurrent.CompletableFuture.supplyAsync { runCatching { SkyLayoutsLayoutCodec.decode(input) } }
+                .thenAccept { result ->
+                    Minecraft.getInstance().execute {
+                        LibraryActions.perform {
+                            require(Storage.scope == scope && currentLayoutPlot()?.id == plot) {
+                                "Your profile or plot changed. Import the layout again."
+                            }
+                            importDecoded(name, result.getOrThrow())
+                        }
+                    }
+                }
+            return
+        }
         val codecs: List<(String) -> SkyShardsLayoutCodec.Layout> =
             when {
                 input.contains("skymutations", true) -> listOf(SkyMutationsLayoutCodec::decode)
@@ -80,6 +98,10 @@ internal object Layouts {
             }
         val layout = codecs.firstNotNullOfOrNull { runCatching { it(input) }.getOrNull() }
         requireNotNull(layout) { "Could not decode this layout. Copy a supported share link, code, or layout JSON." }
+        importDecoded(name, layout)
+    }
+
+    private fun importDecoded(name: String, layout: SkyShardsLayoutCodec.Layout) {
         val blueprint = GreenHouseStorage.MutationBlueprintStorage()
         layout.placements.forEach { cell ->
             val mutation = GreenhouseMutation.fromSkyShardsId(cell.cropId)
