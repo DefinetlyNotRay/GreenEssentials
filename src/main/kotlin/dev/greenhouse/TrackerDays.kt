@@ -22,6 +22,8 @@ internal class DailyTrackerData {
     var unpriced = mutableSetOf<String>()
     var activeMillis = 0L
     var cost = CostTotal()
+    var bottleCostsRecorded = 0L
+    var unpricedBottleCosts = 0
     var sources = mutableMapOf<PriceSource, DailySourceValues>()
     var countedForAllTime = false
     var allTimeHarvestPeriod: String? = null
@@ -36,6 +38,7 @@ internal class DailyTrackerData {
             requireNotNull(values).validate(items)
         }
         require(activeMillis >= 0 && items.values.all { it >= 0 })
+        require(bottleCostsRecorded >= 0 && unpricedBottleCosts >= 0)
         require(values.keys.all { it in items } && unpriced.all { it in items })
         require(values.values.all { it.isFinite() && it >= 0 })
     }
@@ -165,6 +168,14 @@ internal class TrackerDays(
         return generation
     }
 
+    fun recordBottleCost(profile: ProfileData, date: LocalDate, price: Double?, count: Long) {
+        update(profile, date) { day ->
+            repeat(count.toInt()) { day.cost.charge(price) }
+            day.bottleCostsRecorded += count
+            if (price == null) day.unpricedBottleCosts += count.toInt()
+        }
+    }
+
     fun refundCost(profile: ProfileData, date: LocalDate, price: Double?, generation: String) {
         update(profile, date, create = false) { it.cost.refund(price, generation) }
     }
@@ -179,7 +190,9 @@ internal class TrackerDays(
             else day?.sources?.get(source)?.unpriced.orEmpty() + (day?.items?.keys.orEmpty() - values.keys)
         return TrackerTotals(day?.items.orEmpty(), day?.activeMillis ?: 0, values, unpriced,
             cost = day?.cost?.value ?: 0.0, unpricedCosts = day?.cost?.unpriced ?: 0,
-            harvestDays = if (day?.items?.values?.any { it > 0 } == true) 1 else 0)
+            harvestDays = if (day?.items?.values?.any { it > 0 } == true) 1 else 0,
+            uncostedBottles = ((day?.items?.get(ThunderBottle.COMPLETED_ID) ?: 0L) - (day?.bottleCostsRecorded ?: 0L)).coerceAtLeast(0),
+            unpricedBottleCosts = day?.unpricedBottleCosts ?: 0)
     }
 
     fun reset(profile: ProfileData, date: LocalDate) {

@@ -36,6 +36,8 @@ internal class DailyRangeTotals {
     private var cost = 0.0
     private var unpricedCosts = 0
     private var harvestDays = 0
+    private var uncostedBottles = 0L
+    private var unpricedBottleCosts = 0
 
     fun add(totals: TrackerTotals, direction: Int = 1) {
         totals.items.forEach { (id, count) ->
@@ -51,8 +53,11 @@ internal class DailyRangeTotals {
         cost += totals.cost * direction
         unpricedCosts += totals.unpricedCosts * direction
         harvestDays += totals.harvestDays * direction
+        uncostedBottles += totals.uncostedBottles * direction
+        unpricedBottleCosts += totals.unpricedBottleCosts * direction
     }
 
     fun view() = TrackerTotals(items.toMap(), activeMillis, values.filterKeys { it in items }.mapValues { it.value.coerceAtLeast(0.0) }, unpricedDays.keys.toSet(),
-        cost = cost.coerceAtLeast(0.0), unpricedCosts = unpricedCosts, harvestDays = harvestDays)
+        cost = cost.coerceAtLeast(0.0), unpricedCosts = unpricedCosts, harvestDays = harvestDays,
+        uncostedBottles = uncostedBottles, unpricedBottleCosts = unpricedBottleCosts)
 }

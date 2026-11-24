@@ -10,6 +10,8 @@ internal class ProfileData {
     var layouts = linkedMapOf<String, GreenHouseStorage.MutationBlueprintStorage>()
     var active = mutableMapOf<Int, String>()
     var items = mutableMapOf<String, Long>()
+    var bottleCostsRecorded = 0L
+    var unpricedBottleCosts = 0
     var activeMillis = 0L
     var allTimeHarvestDays: Int? = null
     var allTimeHarvestPeriod: String? = null
@@ -113,6 +115,7 @@ internal object Storage {
             requireNotNull(day).validate()
         }
         require(profile.activeMillis >= 0 && profile.items.values.all { count -> count >= 0 })
+        require(profile.bottleCostsRecorded >= 0 && profile.unpricedBottleCosts >= 0)
         require(profile.allTimeHarvestDays?.let { it >= 0 } != false)
         profile.layouts.forEach { (name, blueprint) ->
             GreenhouseBlueprintFile.decode(GreenhouseBlueprintFile.encode(name, blueprint))

@@ -12,12 +12,6 @@ internal object ThunderBottle {
     fun charge(text: String): Long? = message.matchEntire(text)?.groupValues?.get(1)
         ?.replace(",", "")?.toLongOrNull()?.takeIf { it > 0 }
 
-    fun price(quote: (String) -> Double?): Double? {
-        val filled = quote(FILLED_ID) ?: return null
-        val empty = quote(EMPTY_ID) ?: return null
-        return (filled - empty).coerceAtLeast(0.0) / CAPACITY
-    }
-
     fun auctionAverage(data: com.google.gson.JsonObject): Double? {
         val sales = data["totalSales"]?.asLong ?: return null
         return data["avgPrice"]?.asDouble?.takeIf { sales > 0 && it.isFinite() && it > 0 }

@@ -2,23 +2,24 @@ package dev.greenhouse
 
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 
 internal class ThunderBottleTest {
-    @Test fun `Auto subtracts live crafting cost from the three day auction average`() {
-        val book = PriceBook(
-            instantBuy = mapOf("ORB_OF_ENERGY" to 4000.0),
-            auctionAverages = mapOf(ThunderBottle.FILLED_ID to 1_000_000.0),
-        )
+    @Test fun `sale price and crafting cost stay separate and charge has no value`() {
+        val book = PriceBook(instantBuy = mapOf("ORB_OF_ENERGY" to 4000.0),
+            npc = mapOf(ThunderBottle.FILLED_ID to 5000.0, ThunderBottle.EMPTY_ID to 802.0),
+            auctionAverages = mapOf(ThunderBottle.FILLED_ID to 1_000_000.0))
         assertEquals(16002.0, book.price(ThunderBottle.EMPTY_ID, PriceSource.AUTO))
-        assertEquals((1_000_000.0 - 16002.0) / 50000, book.price(ThunderBottle.CHARGE_ID, PriceSource.AUTO))
-        assertNull(book.copy(instantBuy = emptyMap()).price(ThunderBottle.CHARGE_ID, PriceSource.AUTO))
-        assertNull(book.copy(auctionAverages = emptyMap()).price(ThunderBottle.CHARGE_ID, PriceSource.AUTO))
-        assertNull(book.price(ThunderBottle.CHARGE_ID, PriceSource.NPC))
-        assertEquals(0.0, book.price(ThunderBottle.CHARGE_ID, PriceSource.AUTO,
-            mapOf(ThunderBottle.FILLED_ID to 1000.0)))
+        for (source in PriceSource.entries) {
+            assertEquals(0.0, book.price(ThunderBottle.CHARGE_ID, source))
+            assertEquals(1_000_000.0, book.price(ThunderBottle.COMPLETED_ID, source))
+            assertEquals(950000.0, book.price(ThunderBottle.COMPLETED_ID, source,
+                mapOf(ThunderBottle.FILLED_ID to 950000.0)))
+        }
+        assertNull(book.copy(auctionAverages = emptyMap()).price(ThunderBottle.COMPLETED_ID, PriceSource.NPC))
     }
 
-    @Test fun `auction analysis accepts a sold average and rejects missing sales or invalid prices`() {
+    @Test fun `auction analysis accepts a sold average and rejects empty samples`() {
         fun parse(json: String) = ThunderBottle.auctionAverage(com.google.gson.JsonParser.parseString(json).asJsonObject)
         assertEquals(123456.0, parse("""{"totalSales":12,"avgPrice":123456,"medianPrice":100000}"""))
         assertNull(parse("""{"totalSales":0,"avgPrice":123456}"""))
@@ -26,50 +27,70 @@ internal class ThunderBottleTest {
         assertNull(parse("{}"))
     }
 
-    @Test fun `only the Thunderling absorption message records charge`() {
-        assertEquals(2000L, ThunderBottle.charge("ZOOP! Your Empty Thunder in a Bottle has absorbed 2,000 charge, calming your Thunderling."))
+    @Test fun `variable Thunderling messages remain valid completion evidence`() {
+        for ((text, expected) in listOf("2,000" to 2000L, "4,000" to 4000L, "8,000" to 8000L)) {
+            assertEquals(expected, ThunderBottle.charge("ZOOP! Your Empty Thunder in a Bottle has absorbed $text charge, calming your Thunderling."))
+        }
         assertNull(ThunderBottle.charge("Player: ZOOP! Your Empty Thunder in a Bottle has absorbed 2,000 charge, calming your Thunderling."))
-        assertNull(ThunderBottle.charge("ZOOP! Your Empty Thunder in a Bottle has absorbed 0 charge, calming your Thunderling."))
     }
 
-    @Test fun `partial fills earn proportional net bottle value`() {
-        val book = PriceBook()
-        val overrides = mapOf(ThunderBottle.FILLED_ID to 1_000_000.0, ThunderBottle.EMPTY_ID to 100_000.0)
-        val price = book.price(ThunderBottle.CHARGE_ID, PriceSource.AUTO, overrides)!!
-        assertEquals(36_000.0, price * 2000)
-        assertEquals(900_000.0, price * ThunderBottle.CAPACITY)
-        assertNull(book.price(ThunderBottle.CHARGE_ID, PriceSource.BAZAAR_INSTANT_SELL, overrides))
-        assertNull(book.price(ThunderBottle.CHARGE_ID, PriceSource.AUTO))
-    }
-
-    @Test fun `variable charge messages accumulate their actual amounts`() {
-        val sessions = TrackerSessions()
-        for ((text, expected) in listOf("2,000" to 2000L, "4,000" to 4000L, "8,000" to 8000L, "1500" to 1500L)) {
-            val charge = ThunderBottle.charge("ZOOP! Your Empty Thunder in a Bottle has absorbed $text charge, calming your Thunderling.")
-            assertEquals(expected, charge)
-            sessions.record("profile", mapOf(ThunderBottle.CHARGE_ID to requireNotNull(charge)))
-        }
-        val totals = sessions.view("profile")
-        assertEquals(15500L, totals.items[ThunderBottle.CHARGE_ID])
-        val unitPrice = ThunderBottle.price {
-            when (it) {
-                ThunderBottle.FILLED_ID -> 1_000_000.0
-                ThunderBottle.EMPTY_ID -> 100_000.0
-                else -> null
-            }
-        }
-        assertEquals(279_000.0, totals.value { unitPrice })
-    }
-
-    @Test fun `charge income uses the normal session and daily accounting`() {
-        val gains = mapOf(ThunderBottle.CHARGE_ID to 2000L)
-        val sessions = TrackerSessions()
-        sessions.record("profile", gains)
-        assertEquals(2000L, sessions.view("profile").items[ThunderBottle.CHARGE_ID])
+    @Test fun `daily income and cost are recorded separately and frozen`() {
         val profile = ProfileData()
         val days = TrackerDays()
-        val date = java.time.LocalDate.of(2026, 11, 23)
-        days.recordPrices(profile, date, gains) { _, _ -> 18.0 }
-        assertEquals(36_000.0, days.view(profile, date).value { error("Use recorded price") })
+        val date = LocalDate.of(2026, 11, 24)
+        days.recordPrices(profile, date, mapOf(ThunderBottle.COMPLETED_ID to 4L)) { _, _ -> 900000.0 }
+        days.recordBottleCost(profile, date, 16002.0, 4)
+        val totals = days.viewRange(profile, TrackerDateRange(date), PriceSource.NPC).bottleAccounting(1.0, 2.0)
+        assertEquals(3600000.0, totals.value { error("Use recorded price") })
+        assertEquals(64008.0, totals.cost)
+        assertEquals(3535992.0, totals.value { null } - totals.cost)
+        assertEquals(0, totals.unpricedCosts)
+    }
+
+    @Test fun `old charge income is removed and completed bottles receive price and cost`() {
+        val old = TrackerTotals(mapOf(ThunderBottle.CHARGE_ID to 150000L, ThunderBottle.COMPLETED_ID to 4L), 0,
+            recordedValues = mapOf(ThunderBottle.CHARGE_ID to 13266.0, ThunderBottle.COMPLETED_ID to 0.0),
+            cost = 50.0, uncostedBottles = 4)
+        val fixed = old.bottleAccounting(900000.0, 16002.0)
+        assertFalse(ThunderBottle.CHARGE_ID in fixed.items)
+        assertEquals(3600000.0, fixed.value { null })
+        assertEquals(64058.0, fixed.cost)
+        assertEquals(fixed, fixed.bottleAccounting(900000.0, 16002.0))
+        val missing = old.bottleAccounting(null, null)
+        assertNull(missing.price(ThunderBottle.COMPLETED_ID) { null })
+        assertEquals(4, missing.unpricedCosts)
+    }
+
+    @Test fun `manual cost resolves missing bottle costs without changing other unpriced costs`() {
+        val sessions = TrackerSessions()
+        sessions.record("profile", mapOf(ThunderBottle.COMPLETED_ID to 2L))
+        sessions.recordCost("profile", null)
+        sessions.recordBottleCost("profile", null, 2)
+        val totals = sessions.view("profile").bottleAccounting(900000.0, 20000.0)
+        assertEquals(40000.0, totals.cost)
+        assertEquals(1, totals.unpricedCosts)
+        assertEquals(1760000.0, totals.value { 900000.0 } - totals.cost)
+        sessions.reset("profile")
+        assertEquals(0.0, sessions.view("profile").bottleAccounting(900000.0, 20000.0).cost)
+    }
+
+    @Test fun `an explicitly recorded zero sale price stays zero`() {
+        val profile = ProfileData()
+        val days = TrackerDays()
+        val date = LocalDate.of(2026, 11, 24)
+        days.recordPrices(profile, date, mapOf(ThunderBottle.COMPLETED_ID to 1L)) { _, _ -> 0.0 }
+        days.recordBottleCost(profile, date, 20.0, 1)
+        val totals = days.view(profile, date).bottleAccounting(900000.0, 20000.0)
+        assertEquals(0.0, totals.value { null })
+        assertEquals(20.0, totals.cost)
+    }
+
+    @Test fun `legacy bottles in a range do not reprice newer recorded sales`() {
+        val mixed = TrackerTotals(mapOf(ThunderBottle.COMPLETED_ID to 5L), 0,
+            recordedValues = mapOf(ThunderBottle.COMPLETED_ID to 1_000_000.0),
+            cost = 20.0, uncostedBottles = 4)
+        val totals = mixed.bottleAccounting(900000.0, 16002.0)
+        assertEquals(4600000.0, totals.value { null })
+        assertEquals(64028.0, totals.cost)
     }
 }

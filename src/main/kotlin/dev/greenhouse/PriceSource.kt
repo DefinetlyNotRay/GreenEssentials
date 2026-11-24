@@ -17,8 +17,9 @@ internal data class PriceBook(
     val auctionAverages: Map<String, Double> = emptyMap(),
 ) {
     fun price(id: String, source: PriceSource, overrides: Map<String, Double> = emptyMap()): Double? {
-        // Completion counts are informational; charge already earns the profit.
-        if (id == ThunderBottle.COMPLETED_ID) return 0.0
+        if (id == ThunderBottle.CHARGE_ID) return 0.0
+        // Tracked bottles use AH/manual pricing even when crops use NPC/Bazaar.
+        if (id == ThunderBottle.COMPLETED_ID) return price(ThunderBottle.FILLED_ID, PriceSource.AUTO, overrides)
         if (source == PriceSource.AUTO) overrides[id]?.let { return it }
         if (source == PriceSource.AUTO && id == ThunderBottle.FILLED_ID) {
             return auctionAverages[id]
@@ -28,9 +29,6 @@ internal data class PriceBook(
             // Builder glass (three glass at 2 coins yield three bottles).
             val orb = instantBuy["ORB_OF_ENERGY"]?.takeIf { it.isFinite() && it > 0 } ?: return null
             return orb * 4 + 2
-        }
-        if (id == ThunderBottle.CHARGE_ID) {
-            return ThunderBottle.price { price(it, source, overrides) }
         }
         fun quote(item: String): Double {
             fun valid(value: Double?) = value?.takeIf { it.isFinite() && it > 0 } ?: 0.0

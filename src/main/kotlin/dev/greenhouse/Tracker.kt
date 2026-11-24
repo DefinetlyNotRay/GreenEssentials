@@ -43,15 +43,17 @@ internal object Tracker {
     val today get() = days.today()
     val viewLabel get() = if (mode == TrackerMode.DAILY) "Daily ${displayedRange.label}" else mode.label
 
-    fun view(): TrackerTotals = when (mode) {
+    fun view(): TrackerTotals = (when (mode) {
         TrackerMode.SESSION -> sessions.view(Storage.scope)
         TrackerMode.DAILY -> days.viewRange(Storage.profile, displayedRange, Storage.settings.priceSource)
         TrackerMode.ALL_TIME -> Storage.profile?.let { profile ->
             TrackerTotals(profile.items, profile.activeMillis,
                 cost = profile.cost.value, unpricedCosts = profile.cost.unpriced,
-                harvestDays = days.allTimeHarvestDays(profile))
+                harvestDays = days.allTimeHarvestDays(profile),
+                uncostedBottles = ((profile.items[ThunderBottle.COMPLETED_ID] ?: 0L) - profile.bottleCostsRecorded).coerceAtLeast(0),
+                unpricedBottleCosts = profile.unpricedBottleCosts)
         } ?: TrackerTotals(emptyMap(), 0)
-    }
+    }).bottleAccounting(Prices.priceAtSource(ThunderBottle.COMPLETED_ID, PriceSource.AUTO), Prices.autoPrice(ThunderBottle.EMPTY_ID))
 
     fun rows(totals: TrackerTotals = view()): List<TrackerDisplay.Row> = TrackerDisplay.rows(
         totals.items, { totals.price(it, Prices::price) }, Prices::displayName, Storage.settings.compactCrops,
@@ -97,6 +99,8 @@ internal object Tracker {
             TrackerMode.DAILY -> days.resetRange(profile, range)
             TrackerMode.ALL_TIME -> {
                 profile.items.clear()
+                profile.bottleCostsRecorded = 0
+                profile.unpricedBottleCosts = 0
                 profile.activeMillis = 0
                 profile.cost = CostTotal()
                 days.resetAllTimeHarvestDays(profile)
@@ -318,7 +322,18 @@ internal object Tracker {
     }
 
     private fun recordFilledBottles(count: Long) {
-        if (count > 0) recordGains(mapOf(ThunderBottle.COMPLETED_ID to count))
+        if (count <= 0) return
+        val profile = Storage.profile ?: return
+        val scope = Storage.scope ?: return
+        recordGains(mapOf(ThunderBottle.COMPLETED_ID to count))
+        val cost = Prices.autoPrice(ThunderBottle.EMPTY_ID)
+        repeat(count.toInt()) {
+            profile.cost.charge(cost)
+        }
+        sessions.recordBottleCost(scope, cost, count)
+        if (cost == null) profile.unpricedBottleCosts += count.toInt()
+        profile.bottleCostsRecorded += count
+        days.recordBottleCost(profile, days.recordingDay, cost, count)
     }
 
     fun chat(message: Component) {
@@ -336,8 +351,7 @@ internal object Tracker {
             return
         }
         if (currentPlot() == null && !text.startsWith("[Sacks]")) return
-        ThunderBottle.charge(text)?.let { charge ->
-            recordGains(mapOf(ThunderBottle.CHARGE_ID to charge))
+        ThunderBottle.charge(text)?.let {
             recordFilledBottles(thunderBottles.confirm(System.currentTimeMillis()))
         }
         if (Minecraft.getInstance().currentScreen == null) {

@@ -51,11 +51,12 @@ internal class ThunderBottleInventoryTest {
         assertEquals(0L, tracker.snapshot(bottles(0, 3), true, 2040))
     }
 
-    @Test fun `completion counts never add duplicate profit`() {
-        val book = PriceBook()
+    @Test fun `completed bottles use sale price regardless of crop price source`() {
+        val book = PriceBook(auctionAverages = mapOf(ThunderBottle.FILLED_ID to 900000.0))
         for (source in PriceSource.entries) {
-            assertEquals(0.0, book.price(ThunderBottle.COMPLETED_ID, source,
-                mapOf(ThunderBottle.COMPLETED_ID to 1000000.0)))
+            assertEquals(900000.0, book.price(ThunderBottle.COMPLETED_ID, source))
+            assertEquals(1000000.0, book.price(ThunderBottle.COMPLETED_ID, source,
+                mapOf(ThunderBottle.FILLED_ID to 1000000.0)))
         }
     }
 }
