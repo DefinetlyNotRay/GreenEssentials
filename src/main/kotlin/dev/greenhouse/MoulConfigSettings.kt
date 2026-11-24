@@ -173,6 +173,16 @@ class HudOptions {
 }
 
 class TrackerOptions {
+    @JvmField @Expose
+    @ConfigOption(name = "Thunder Bottle Price", desc = "Filled bottle sale price in coins. Blank uses the 3-day AH average.")
+    @ConfigEditorText(forbidden = "[^0-9,.]")
+    val bottlePrice = bottleOverride(ThunderBottle.FILLED_ID)
+
+    @JvmField @Expose
+    @ConfigOption(name = "Thunder Bottle Cost", desc = "Crafting cost per bottle in coins. Blank uses the recipe cost.")
+    @ConfigEditorText(forbidden = "[^0-9,.]")
+    val bottleCost = bottleOverride(ThunderBottle.EMPTY_ID)
+
     @JvmField
     @Expose
     @ConfigOption(
@@ -192,10 +202,20 @@ class TrackerOptions {
             Tracker.resetRuntime()
         }
     @JvmField
-    @ConfigOption(name = "Refresh Prices", desc = "Fetch current Bazaar and NPC prices.")
+    @ConfigOption(name = "Refresh Prices", desc = "Refresh Bazaar, NPC, and AH prices.")
     @ConfigEditorButton(buttonText = "Refresh")
     val prices = Runnable { Prices.refresh(true) }
 }
+
+private fun bottleOverride(id: String): Property<String> =
+    setting(Storage.settings.priceOverrides[id]?.let { java.math.BigDecimal.valueOf(it).stripTrailingZeros().toPlainString() } ?: "") { input ->
+        val text = input.trim().replace(",", "")
+        val value = if (text.isEmpty()) null else text.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
+            ?: return@setting
+        Tracker.flush()
+        if (value == null) Storage.settings.priceOverrides.remove(id)
+        else Storage.settings.priceOverrides[id] = value
+    }
 
 class LayoutOptions {
     @JvmField

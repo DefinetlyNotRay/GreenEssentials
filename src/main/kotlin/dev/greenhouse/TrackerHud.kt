@@ -54,11 +54,6 @@ internal object TrackerHud {
     private var priceSourceBounds: Bounds? = null
     private var dateEditor: EditBox? = null
     private var dateError: String? = null
-    private var bottlePriceBounds: Bounds? = null
-    private var bottleCostBounds: Bounds? = null
-    private var bottleEditor: EditBox? = null
-    private var editingBottleCost = false
-    private var bottleError: String? = null
     private var buttons = emptyList<Button>()
     private var renderedScreen: Screen? = null
     private var capturedPress = false
@@ -109,9 +104,6 @@ internal object TrackerHud {
         itemListBounds = null
         dateBounds = null
         priceSourceBounds = null
-        bottlePriceBounds = null
-        bottleCostBounds = null
-        cancelBottleEdit()
         cancelDateEdit()
         capturedPress = false
         confirmation.clear()
@@ -121,32 +113,6 @@ internal object TrackerHud {
         if (button != 0 || !canInteract(screen)) return false
 
         val scale = Storage.settings.hudScale.coerceIn(0.5f, 2f)
-        val priceHit = bottlePriceBounds?.contains(mouseX / scale, mouseY / scale) == true
-        val costHit = bottleCostBounds?.contains(mouseX / scale, mouseY / scale) == true
-        if (priceHit || costHit) {
-            if (bottleEditor == null || editingBottleCost != costHit) {
-                cancelDateEdit()
-                editingBottleCost = costHit
-                val area = if (costHit) bottleCostBounds!! else bottlePriceBounds!!
-                val id = if (costHit) ThunderBottle.EMPTY_ID else ThunderBottle.FILLED_ID
-                bottleEditor = EditBox(Minecraft.getInstance().font, area.x.toInt(), area.y.toInt(), area.width.toInt(), BUTTON_HEIGHT,
-                    Component.literal(if (costHit) "Bottle cost" else "Bottle price")).apply {
-                    setMaxLength(24)
-                    value = Storage.settings.priceOverrides[id]?.toString() ?: ""
-                    setFocused(true)
-                    setCanLoseFocus(false)
-                    setHighlightPos(0)
-                    setResponder { bottleError = null }
-                }
-                bottleError = null
-                confirmation.clear()
-            } else {
-                bottleEditor?.mouseClicked(MouseButtonEvent(mouseX / scale, mouseY / scale, MouseButtonInfo(button, 0)), false)
-            }
-            capturedPress = true
-            return true
-        }
-        cancelBottleEdit()
         if (priceSourceBounds?.contains(mouseX / scale, mouseY / scale) == true) {
             confirmation.clear()
             cancelDateEdit()
@@ -212,36 +178,7 @@ internal object TrackerHud {
         dateError = null
     }
 
-    private fun cancelBottleEdit() {
-        bottleEditor = null
-        bottleError = null
-    }
-
     private fun editDate(screen: Screen, input: KeyEvent): Boolean {
-        bottleEditor?.let { editor ->
-            if (!canInteract(screen)) return false
-            when (input.key()) {
-                InputConstants.KEY_ESCAPE -> cancelBottleEdit()
-                InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
-                    runCatching {
-                        val text = editor.value.trim().replace(",", "")
-                        val value = if (text.isEmpty()) null else text.toDouble().also {
-                            require(it.isFinite() && it >= 0) { "Enter a valid coin amount" }
-                        }
-                        Tracker.flush()
-                        val id = if (editingBottleCost) ThunderBottle.EMPTY_ID else ThunderBottle.FILLED_ID
-                        if (value == null) Storage.settings.priceOverrides.remove(id)
-                        else Storage.settings.priceOverrides[id] = value
-                        Storage.save()
-                    }.onSuccess {
-                        cancelBottleEdit()
-                        lastRefresh = 0
-                    }.onFailure { bottleError = "Enter a valid coin amount" }
-                }
-                else -> editor.keyPressed(input)
-            }
-            return true
-        }
         val editor = dateEditor ?: return false
         if (!canInteract(screen)) return false
         when (input.key()) {
@@ -261,7 +198,7 @@ internal object TrackerHud {
 
     @JvmStatic
     fun typeDate(input: CharacterEvent): Boolean {
-        val editor = bottleEditor ?: dateEditor ?: return false
+        val editor = dateEditor ?: return false
         val screen = Minecraft.getInstance().currentScreen ?: return false
         if (!canInteract(screen)) return false
         editor.charTyped(input)
@@ -315,8 +252,6 @@ internal object TrackerHud {
             add("§6Avg/day: §e$average")
         }
         add(priceSourceLabel())
-        add(bottleLabel(false))
-        add(bottleLabel(true))
         val unpriced = totals.unpricedCount(Prices::price)
         if (Tracker.mode != TrackerMode.DAILY) {
             add("§8${Prices.status}" + if (unpriced > 0) " · $unpriced unpriced" else "")
@@ -324,12 +259,6 @@ internal object TrackerHud {
             add("§8$unpriced unpriced")
         }
         if (profile == null) add("§cSelect /greenhouse profile <name>")
-    }
-
-    private fun bottleLabel(cost: Boolean): String {
-        val id = if (cost) ThunderBottle.EMPTY_ID else ThunderBottle.COMPLETED_ID
-        val amount = Prices.priceAtSource(id, PriceSource.AUTO)?.let(Tracker::number) ?: "Unpriced"
-        return "§7Bottle ${if (cost) "cost" else "price"}: §e$amount"
     }
 
     fun render(
@@ -346,12 +275,9 @@ internal object TrackerHud {
         itemListBounds = null
         dateBounds = null
         priceSourceBounds = null
-        bottlePriceBounds = null
-        bottleCostBounds = null
         if (!preview && (client.level == null || client.guiHidden || !Storage.settings.enabled || !inGreenhouse())) {
             confirmation.clear()
             cancelDateEdit()
-            cancelBottleEdit()
             return
         }
 
@@ -413,32 +339,14 @@ internal object TrackerHud {
                 val lineY = y + itemOffset + 1 + shownRows.size * ROW_HEIGHT + index * FOOTER_LINE_HEIGHT
                 val isSource = line == priceSourceLabel()
                 val isAverage = line.startsWith("§6Avg/day:")
-                val isBottlePrice = line == bottleLabel(false)
-                val isBottleCost = line == bottleLabel(true)
                 val area = Bounds(x.toDouble(), lineY.toDouble(), font.width(line).toDouble(), FOOTER_LINE_HEIGHT.toDouble())
-                val hovered = (isSource || isAverage || isBottlePrice || isBottleCost) && interactive && area.contains(mouseX / scale.toDouble(), mouseY / scale.toDouble())
+                val hovered = (isSource || isAverage) && interactive && area.contains(mouseX / scale.toDouble(), mouseY / scale.toDouble())
                 if (isSource && interactive) priceSourceBounds = area
-                if (isBottlePrice && interactive) bottlePriceBounds = area
-                if (isBottleCost && interactive) bottleCostBounds = area
-                val editor = bottleEditor?.takeIf { interactive && ((isBottleCost && editingBottleCost) || (isBottlePrice && !editingBottleCost)) }
-                if (editor != null) {
-                    editor.setX(x)
-                    editor.setY(lineY - 2)
-                    editor.setWidth(width)
-                    editor.setHeight(FOOTER_LINE_HEIGHT + 2)
-                    editor.setTextColor(if (bottleError == null) -1 else 0xffff7777.toInt())
-                    editor.extractRenderState(graphics, (mouseX / scale).toInt(), (mouseY / scale).toInt(), 0f)
-                } else graphics.text(font, line, x, lineY, -1)
+                graphics.text(font, line, x, lineY, -1)
                 if (hovered) {
                     if (isSource) graphics.fill(x, lineY + 9, x + font.width(line), lineY + 10, Appearance.color(Storage.settings.hudAccentColor))
-                    val tooltip = when {
-                        (isBottlePrice || isBottleCost) && bottleError != null -> bottleError!!
-                        editor != null -> "Enter to save · Escape to cancel · Blank for Auto"
-                        isBottleCost -> "Set crafting cost per bottle. Blank uses four Orbs of Energy and one glass bottle."
-                        isBottlePrice -> "Set filled bottle sale price. Blank uses the 3-day AH average."
-                        isSource -> priceSourceTooltip()
-                        else -> "Net profit for this view divided by days with harvests. Costs on non-harvest days still reduce the average. Unpriced items are excluded from value."
-                    }
+                    val tooltip = if (isSource) priceSourceTooltip() else
+                        "Net profit for this view divided by days with harvests. Costs on non-harvest days still reduce the average. Unpriced items are excluded from value."
                     graphics.setTooltipForNextFrame(Component.literal(tooltip), mouseX, mouseY)
                 }
             }
