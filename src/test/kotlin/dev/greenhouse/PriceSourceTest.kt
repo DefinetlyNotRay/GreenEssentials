@@ -43,16 +43,19 @@ class PriceSourceTest {
         assertEquals(0.0, book.price("WHEAT", PriceSource.AUTO, mapOf("WHEAT" to 0.0)))
     }
 
-    @Test fun `source choice preserves the existing compacted crop conversion`() {
+    @Test fun `source choice quotes each item without crop form substitution`() {
         val book = PriceBook(
             instantBuy = mapOf("ENCHANTED_WHEAT" to 1600.0),
             instantSell = mapOf("ENCHANTED_WHEAT" to 800.0),
             npc = mapOf("WHEAT" to 2.0, "ENCHANTED_WHEAT" to 320.0),
         )
-        assertEquals(10.0, book.price("WHEAT", PriceSource.BAZAAR_INSTANT_BUY))
-        assertEquals(5.0, book.price("WHEAT", PriceSource.BAZAAR_INSTANT_SELL))
+        assertNull(book.price("WHEAT", PriceSource.BAZAAR_INSTANT_BUY))
+        assertNull(book.price("WHEAT", PriceSource.BAZAAR_INSTANT_SELL))
         assertEquals(2.0, book.price("WHEAT", PriceSource.NPC))
-        assertEquals(5.0, book.price("WHEAT", PriceSource.AUTO))
+        assertEquals(2.0, book.price("WHEAT", PriceSource.AUTO))
+        assertEquals(1600.0, book.price("ENCHANTED_WHEAT", PriceSource.BAZAAR_INSTANT_BUY))
+        assertEquals(800.0, book.price("ENCHANTED_WHEAT", PriceSource.BAZAAR_INSTANT_SELL))
+        assertEquals(320.0, book.price("ENCHANTED_WHEAT", PriceSource.NPC))
     }
 
     @Test fun `invalid and zero quotes remain unpriced`() {
@@ -80,12 +83,12 @@ class PriceSourceTest {
         assertEquals(20.0, days.view(profile, date, PriceSource.AUTO).value { 999.0 })
     }
 
-    @Test fun `legacy daily history never invents prices for sources not recorded`() {
+    @Test fun `legacy crop records retain their saved values`() {
         val profile = ProfileData()
         val date = java.time.LocalDate.of(2026, 10, 28)
         profile.days[date.toString()] = Json.gson.fromJson("""{"items":{"WHEAT":10},"values":{"WHEAT":20}}""", DailyTrackerData::class.java)
         val days = TrackerDays()
-        assertEquals(20.0, days.view(profile, date).value { 999.0 })
+        assertEquals(20.0, days.view(profile, date).value { error("Never reprice history") })
         assertNull(days.view(profile, date, PriceSource.NPC).price("WHEAT") { 999.0 })
         assertEquals(1, days.view(profile, date, PriceSource.NPC).unpricedCount { 999.0 })
     }

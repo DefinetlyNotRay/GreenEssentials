@@ -32,6 +32,9 @@ internal class DailyRangeTotals {
     private val items = mutableMapOf<String, Long>()
     private val values = mutableMapOf<String, Double>()
     private val unpricedDays = mutableMapOf<String, Int>()
+    private val quoteValues = mutableMapOf<String, Double>()
+    private val quoteCounts = mutableMapOf<String, Long>()
+    private val unpricedQuoteDays = mutableMapOf<String, Int>()
     private var activeMillis = 0L
     private var cost = 0.0
     private var unpricedCosts = 0
@@ -49,6 +52,15 @@ internal class DailyRangeTotals {
             val next = unpricedDays.getOrDefault(id, 0) + direction
             if (next == 0) unpricedDays.remove(id) else unpricedDays[id] = next
         }
+        totals.quoteValues.forEach { (id, value) -> quoteValues[id] = quoteValues.getOrDefault(id, 0.0) + value * direction }
+        totals.quoteCounts.forEach { (id, count) ->
+            val next = quoteCounts.getOrDefault(id, 0L) + count * direction
+            if (next == 0L) quoteCounts.remove(id) else quoteCounts[id] = next
+        }
+        totals.unpricedQuotes.forEach { id ->
+            val next = unpricedQuoteDays.getOrDefault(id, 0) + direction
+            if (next == 0) unpricedQuoteDays.remove(id) else unpricedQuoteDays[id] = next
+        }
         activeMillis += totals.activeMillis * direction
         cost += totals.cost * direction
         unpricedCosts += totals.unpricedCosts * direction
@@ -59,5 +71,7 @@ internal class DailyRangeTotals {
 
     fun view() = TrackerTotals(items.toMap(), activeMillis, values.filterKeys { it in items }.mapValues { it.value.coerceAtLeast(0.0) }, unpricedDays.keys.toSet(),
         cost = cost.coerceAtLeast(0.0), unpricedCosts = unpricedCosts, harvestDays = harvestDays,
-        uncostedBottles = uncostedBottles, unpricedBottleCosts = unpricedBottleCosts)
+        uncostedBottles = uncostedBottles, unpricedBottleCosts = unpricedBottleCosts,
+        quoteValues = quoteValues.filterKeys { it in quoteCounts }.mapValues { it.value.coerceAtLeast(0.0) },
+        quoteCounts = quoteCounts.toMap(), unpricedQuotes = unpricedQuoteDays.keys.toSet())
 }

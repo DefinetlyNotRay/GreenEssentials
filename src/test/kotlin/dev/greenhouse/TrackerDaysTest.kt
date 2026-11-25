@@ -33,19 +33,19 @@ class TrackerDaysTest {
         days.record(profile, date, mapOf("WHEAT" to 25_921L)) { 3.0 }
         val totals = days.view(profile, date)
         val rows = TrackerDisplay.rows(totals.items, { totals.price(it) { 99_999.0 } }, { it })
-        assertEquals(77_763.0, rows.sumOf { it.value ?: 0.0 }, 0.000001)
-        assertEquals(77_763.0, totals.value { 99_999.0 })
+        assertEquals(12.0, rows.sumOf { it.value ?: 0.0 }, 0.000001)
+        assertEquals(12.0, totals.value { 99_999.0 })
     }
 
     @Test
-    fun `unknown prices remain unknown and do not erase the value of later priced gains`() {
+    fun `incomplete item quote history remains unpriced without inventing a full value`() {
         val days = days()
         val profile = ProfileData()
         days.record(profile, date, mapOf("WHEAT" to 10L)) { null }
         days.record(profile, date, mapOf("WHEAT" to 5L)) { 2.0 }
         val totals = days.view(profile, date)
         assertEquals(15L, totals.items["WHEAT"])
-        assertEquals(10.0, totals.value { 100.0 })
+        assertEquals(0.0, totals.value { 100.0 })
         assertNull(totals.price("WHEAT") { 100.0 })
         assertEquals(1, totals.unpricedCount { 100.0 })
     }
@@ -191,17 +191,17 @@ class TrackerDaysTest {
         assertEquals(500.0, days.view(otherProfile, date).cost)
     }
 
-    @Test fun `new quotes on a legacy day cannot backfill earlier unrecorded quantities`() {
+    @Test fun `mixed legacy crop records preserve saved values without live repricing`() {
         val profile = ProfileData()
         profile.days[date.toString()] = Json.gson.fromJson(
             """{"items":{"WHEAT":10},"values":{"WHEAT":20}}""", DailyTrackerData::class.java,
         )
         val days = days()
         days.recordPrices(profile, date, mapOf("WHEAT" to 5L)) { _, _ -> 3.0 }
-        assertEquals(35.0, days.view(profile, date).value { 999.0 })
+        assertEquals(35.0, days.view(profile, date).value { error("Never reprice history") })
         val npc = days.view(profile, date, PriceSource.NPC)
         assertEquals(15L, npc.items["WHEAT"])
-        assertEquals(15.0, npc.value { 999.0 })
+        assertEquals(0.0, npc.value { 999.0 })
         assertNull(npc.price("WHEAT") { 999.0 })
         assertEquals(1, npc.unpricedCount { 999.0 })
         profile.days.getValue(date.toString()).validate()

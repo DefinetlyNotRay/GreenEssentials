@@ -240,7 +240,7 @@ internal object TrackerHud {
         "Click to cycle Auto > BZ instant buy > BZ instant sell > NPC. " +
             "Auto uses the best instant sell/NPC value or your manual override. " +
             "Missing source prices show as unpriced. Cost stays at its Auto value when planted." +
-            if (Tracker.mode == TrackerMode.DAILY) " Daily uses recorded prices for every source; older days may have only Auto recorded." else ""
+            if (Tracker.mode == TrackerMode.DAILY) " Daily uses recorded item quotes. Older records retain their saved values." else ""
 
     private fun footerLines(totals: TrackerTotals, profile: ProfileData?): List<String> = buildList {
         if (rows.isEmpty()) add(if (Tracker.mode == TrackerMode.DAILY) "§7No harvests recorded in this range" else "§7Harvest crops to start tracking")

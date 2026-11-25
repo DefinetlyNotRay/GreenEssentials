@@ -54,6 +54,7 @@ internal object Tracker {
                 unpricedBottleCosts = profile.unpricedBottleCosts)
         } ?: TrackerTotals(emptyMap(), 0)
     }).bottleAccounting(Prices.priceAtSource(ThunderBottle.COMPLETED_ID, PriceSource.AUTO), Prices.autoPrice(ThunderBottle.EMPTY_ID))
+        .copy(compactCrops = Storage.settings.compactCrops)
 
     fun rows(totals: TrackerTotals = view()): List<TrackerDisplay.Row> = TrackerDisplay.rows(
         totals.items, { totals.price(it, Prices::price) }, Prices::displayName, Storage.settings.compactCrops,

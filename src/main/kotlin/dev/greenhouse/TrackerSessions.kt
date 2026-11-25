@@ -16,6 +16,10 @@ internal data class TrackerTotals(
     val harvestDays: Int = 0,
     val uncostedBottles: Long = 0,
     val unpricedBottleCosts: Int = 0,
+    val quoteValues: Map<String, Double> = emptyMap(),
+    val quoteCounts: Map<String, Long> = emptyMap(),
+    val unpricedQuotes: Set<String> = emptySet(),
+    val compactCrops: Boolean = true,
 ) {
     /** Remove the former charge income and repair old zero-valued completion rows. */
     fun bottleAccounting(salePrice: Double?, craftCost: Double?): TrackerTotals {
@@ -49,15 +53,31 @@ internal data class TrackerTotals(
 
     fun price(id: String, livePrice: (String) -> Double?): Double? {
         val values = recordedValues ?: return livePrice(id)
+        Catalog.units[id]?.let { unit ->
+            val count = items[unit.base]?.takeIf { it > 0 } ?: return null
+            if (id in unpricedQuotes) return null
+            if ((quoteCounts[id] ?: 0L) < count) {
+                // Keep the saved legacy contribution; only newly recorded units
+                // use the new per-item quotes. Never reprice history from live data.
+                if (unit.base in unpricedItems) return null
+                val recorded = values[unit.base] ?: return null
+                val legacy = (recorded - (quoteValues[unit.base] ?: 0.0)).coerceAtLeast(0.0)
+                return (legacy * unit.amount + (quoteValues[id] ?: 0.0)) / count
+            }
+            return quoteValues[id]?.div(count)
+        }
         if (id in unpricedItems) return null
         val count = items[id]?.takeIf { it > 0 } ?: return null
         return values[id]?.div(count)
     }
 
     fun value(livePrice: (String) -> Double?): Double =
-        recordedValues?.values?.sum() ?: items.entries.sumOf { (id, count) -> (livePrice(id) ?: 0.0) * count }
+        valuedRows(livePrice).sumOf { it.value ?: 0.0 }
 
-    fun unpricedCount(livePrice: (String) -> Double?): Int = items.keys.count { price(it, livePrice) == null }
+    fun unpricedCount(livePrice: (String) -> Double?): Int = valuedRows(livePrice).count { it.value == null }
+
+    private fun valuedRows(livePrice: (String) -> Double?) =
+        TrackerDisplay.rows(items, { price(it, livePrice) }, { it }, compactCrops)
 }
 
 /** Session history is kept per server/account/profile for this game run, across world changes. */

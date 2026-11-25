@@ -80,7 +80,7 @@ class TrackerDateRangeTest {
         assertEquals(1, days.viewRange(profile, range, PriceSource.NPC).unpricedCount { 999.0 })
         days.recordPrices(profile, today, mapOf("WHEAT" to 10L)) { _, source -> if (source == PriceSource.NPC) 5.0 else 3.0 }
         val npc = days.viewRange(profile, range, PriceSource.NPC)
-        assertEquals(50.0, npc.value { 999.0 })
+        assertEquals(0.0, npc.value { 999.0 })
         assertEquals(1, npc.unpricedCount { 999.0 })
         assertEquals(2, npc.harvestDays)
         assertEquals(50.0, days.viewRange(profile, range, PriceSource.AUTO).value { 999.0 })

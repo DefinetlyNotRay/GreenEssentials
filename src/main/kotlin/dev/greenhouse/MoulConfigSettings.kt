@@ -187,7 +187,7 @@ class TrackerOptions {
     @Expose
     @ConfigOption(
         name = "Compact Crops",
-        desc = "Display enchanted and compacted crops with exact leftovers. Does not craft items or change profit.",
+        desc = "Group crops into enchanted and compacted forms with exact leftovers. Each form uses its own price.",
     )
     @ConfigEditorBoolean
     val compact = setting(Storage.settings.compactCrops) { Storage.settings.compactCrops = it }

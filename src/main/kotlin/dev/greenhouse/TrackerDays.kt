@@ -4,15 +4,43 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 
+/** Per-form quotes weighted by the raw units harvested, independent of HUD compaction. */
+internal class DailyItemQuotes {
+    var values = mutableMapOf<String, Double>()
+    var counts = mutableMapOf<String, Long>()
+    var unpriced = mutableSetOf<String>()
+
+    fun record(base: String, count: Long, price: (String) -> Double?) {
+        for ((id, unit) in Catalog.units) {
+            if (unit.base != base) continue
+            counts[id] = counts.getOrDefault(id, 0L) + count
+            val value = price(id)?.times(count)?.takeIf { it.isFinite() && it >= 0 }
+            if (value == null) unpriced.add(id)
+            else values[id] = values.getOrDefault(id, 0.0) + value
+        }
+    }
+
+    fun validate(items: Map<String, Long>) {
+        requireNotNull(values)
+        requireNotNull(counts)
+        requireNotNull(unpriced)
+        require(values.values.all { it.isFinite() && it >= 0 })
+        require(counts.all { (id, count) -> count > 0 && count <= (items[Catalog.units[id]?.base] ?: 0L) })
+        require(values.keys.all { it in counts } && unpriced.all { it in counts })
+    }
+}
+
 internal class DailySourceValues {
     var values = mutableMapOf<String, Double>()
     var unpriced = mutableSetOf<String>()
+    var itemQuotes = DailyItemQuotes()
 
     fun validate(items: Map<String, Long>) {
         requireNotNull(values)
         requireNotNull(unpriced)
         require(values.keys.all { it in items } && unpriced.all { it in items })
         require(values.values.all { it.isFinite() && it >= 0 })
+        requireNotNull(itemQuotes).validate(items)
     }
 }
 
@@ -20,6 +48,7 @@ internal class DailyTrackerData {
     var items = mutableMapOf<String, Long>()
     var values = mutableMapOf<String, Double>()
     var unpriced = mutableSetOf<String>()
+    var itemQuotes = DailyItemQuotes()
     var activeMillis = 0L
     var cost = CostTotal()
     var bottleCostsRecorded = 0L
@@ -41,6 +70,7 @@ internal class DailyTrackerData {
         require(bottleCostsRecorded >= 0 && unpricedBottleCosts >= 0)
         require(values.keys.all { it in items } && unpriced.all { it in items })
         require(values.values.all { it.isFinite() && it >= 0 })
+        requireNotNull(itemQuotes).validate(items)
     }
 }
 
@@ -146,6 +176,8 @@ internal class TrackerDays(
                     val value = price(id, source)?.times(count)?.takeIf { it.isFinite() && it >= 0 }
                     if (value == null) unpriced.add(id)
                     else values[id] = values.getOrDefault(id, 0.0) + value
+                    val quotes = if (source == PriceSource.AUTO) day.itemQuotes else day.sources.getValue(source).itemQuotes
+                    quotes.record(id, count) { form -> price(form, source) }
                 }
             }
         }
@@ -185,6 +217,7 @@ internal class TrackerDays(
     }
 
     private fun totals(day: DailyTrackerData?, source: PriceSource): TrackerTotals {
+        val quotes = if (source == PriceSource.AUTO) day?.itemQuotes else day?.sources?.get(source)?.itemQuotes
         val values = if (source == PriceSource.AUTO) day?.values.orEmpty() else day?.sources?.get(source)?.values.orEmpty()
         val unpriced = if (source == PriceSource.AUTO) day?.unpriced.orEmpty()
             else day?.sources?.get(source)?.unpriced.orEmpty() + (day?.items?.keys.orEmpty() - values.keys)
@@ -192,7 +225,8 @@ internal class TrackerDays(
             cost = day?.cost?.value ?: 0.0, unpricedCosts = day?.cost?.unpriced ?: 0,
             harvestDays = if (day?.items?.values?.any { it > 0 } == true) 1 else 0,
             uncostedBottles = ((day?.items?.get(ThunderBottle.COMPLETED_ID) ?: 0L) - (day?.bottleCostsRecorded ?: 0L)).coerceAtLeast(0),
-            unpricedBottleCosts = day?.unpricedBottleCosts ?: 0)
+            unpricedBottleCosts = day?.unpricedBottleCosts ?: 0,
+            quoteValues = quotes?.values.orEmpty(), quoteCounts = quotes?.counts.orEmpty(), unpricedQuotes = quotes?.unpriced.orEmpty())
     }
 
     fun reset(profile: ProfileData, date: LocalDate) {

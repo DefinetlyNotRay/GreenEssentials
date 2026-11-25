@@ -9,7 +9,7 @@ internal enum class PriceSource(val label: String) {
     fun next(): PriceSource = entries[(ordinal + 1) % entries.size]
 }
 
-/** Uses the same base-unit conversions for every source, without cross-source fallbacks. */
+/** Quotes the requested item only, without substituting another crop form. */
 internal data class PriceBook(
     val instantBuy: Map<String, Double> = emptyMap(),
     val instantSell: Map<String, Double> = emptyMap(),
@@ -39,9 +39,6 @@ internal data class PriceBook(
                 PriceSource.NPC -> valid(npc[item])
             }
         }
-        val derived = Catalog.units.entries
-            .filter { it.value.base == id }
-            .maxOfOrNull { (formId, unit) -> quote(formId) / unit.amount } ?: 0.0
-        return maxOf(quote(id), derived).takeIf { it > 0 }
+        return quote(id).takeIf { it > 0 }
     }
 }
